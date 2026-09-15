@@ -61,6 +61,7 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+*.db
 
 # Flask stuff:
 instance/
@@ -243,3 +244,9 @@ tags
 # Persistent undo
 [._]*.un~
 
+
+# генерирую код из org-mode, поэтому его игнорю
+*.py
+
+# генерирую картинки с диаграммами из org-mode, поэтому игнорю
+*.png

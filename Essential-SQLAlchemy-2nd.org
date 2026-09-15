@@ -1,4 +1,6 @@
 * Chapter 1: Schema and Types
+
+** SQLAlchemy v1
 #+BEGIN_SRC python :results output
   import sqlalchemy
   print(sqlalchemy.__version__)
@@ -7,16 +9,17 @@
 #+RESULTS:
 : 2.0.52
 
-
-#+BEGIN_SRC python :session ch1
+#+NAME: A1
+#+BEGIN_SRC python :session ch1 :results none
   from sqlalchemy import MetaData
 
   metadata = MetaData()
 #+END_SRC
 
 
-#+BEGIN_SRC python :session ch1
-  from sqlalchemy import Table, Column, Integer, Numeric, String, ForeignKey
+#+NAME: B1
+#+BEGIN_SRC python :session ch1 :results none
+  from sqlalchemy import Table, Column, Integer, Numeric, String, CheckConstraint
 
   cookies = Table(
       "cookies",
@@ -27,22 +30,229 @@
       Column("cookie_sku", String(55)),
       Column("quantity", Integer()),
       Column("unit_cost", Numeric(12, 2)),
+      CheckConstraint("unit_cost >= 0.00", name="unit_cost_positive"),
   )
 #+END_SRC
 
-#+BEGIN_SRC python :session ch1
+#+NAME: C1
+#+BEGIN_SRC python :session ch1 :results none
   from datetime import datetime
-  from sqlalchemy import DateTime
+  from sqlalchemy import DateTime, PrimaryKeyConstraint, UniqueConstraint
 
   users = Table(
       "users",
       metadata,
-      Column("user_id", Integer(), primary_key=True),
-      Column("username", String(15), nullable=False, unique=True),
+      Column("user_id", Integer()),
+      Column("username", String(15), nullable=False),
       Column("email_address", String(255), nullable=False),
       Column("phone", String(20), nullable=False),
       Column("password", String(25), nullable=False),
       Column("created_on", DateTime(), default=datetime.now),
       Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now),
+      PrimaryKeyConstraint("user_id", name="user_pk"),
+      UniqueConstraint("username", name="uix_username"),
   )
+#+END_SRC
+
+#+BEGIN_SRC plantuml :file er.png
+  @startuml
+  skinparam linetype ortho
+  skinparam nodesep 30
+  skinparam ranksep 40
+
+  skinparam entity {
+  	BackgroundColor White
+  	BorderColor Black
+  	BorderThickness 1.2
+  	FontStyle bold
+  	FontSize 12
+  }
+
+  entity orders {
+  	,**order_id** : PK
+  	--
+  	user_id : FK
+  }
+  entity line_items {
+  	,**line_item_id**: PK
+  	--
+  	,**order_id** : FK
+  	,**cookie_id** : FK
+  	quantity
+  	extended_cost
+  }
+  entity cookies {
+  	,**cookie_id** : PK
+  	--
+  	cookie_name
+  	cookie_reciepe_url
+  	cookie_sku
+  	quantity
+  	unit_cost
+  }
+  entity users {
+  	,**user_id** : PK
+  	--
+  	customer_number
+  	username
+  	email-address
+  	phone
+  	password
+  	created_on
+  	updated_on
+  }
+
+  orders ||--|{ line_items
+  line_items }o--|| cookies
+  orders }o--|| users
+
+  orders -[hidden]right- line_items
+  line_items -[hidden]right- cookies
+  orders -[hidden]down- users
+  @enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:er.png]]
+
+#+NAME: D1
+#+BEGIN_SRC python :session ch1 :results none
+  from sqlalchemy import ForeignKey, Boolean
+
+  orders = Table(
+      "orders",
+      metadata,
+      Column("order_id", Integer(), primary_key=True),
+      Column("user_id", ForeignKey("users.user_id")),
+      Column("shipped", Boolean(), default=False),
+  )
+
+
+  line_items = Table(
+      "line_items",
+      metadata,
+      Column("line_items_id", Integer(), primary_key=True),
+      Column("order_id", ForeignKey("orders.order_id")),
+      Column("cookie_id", ForeignKey("cookies.cookie_id")),
+      Column("quantity", Integer()),
+      Column("extended_cost", Numeric(12, 2)),
+  )
+#+END_SRC
+
+#+NAME: E1
+#+BEGIN_SRC python :session ch1 :results none :tangle ch1-v1.py :noweb tangle :shebang "#!/usr/bin/env python3"
+  <<A1>>
+  <<B1>>
+  <<C1>>
+  <<D1>>
+  from sqlalchemy import create_engine
+
+  engine = create_engine("sqlite:///:memory:", echo=True)
+  metadata.create_all(engine)
+#+END_SRC
+
+
+** SQLAlchemy v2
+#+BEGIN_SRC python :results none :tangle ch1-v2.py :noweb tangle :shebang "#!/usr/bin/env python3"
+  #!/usr/bin/env python3
+  from datetime import datetime
+  from decimal import Decimal
+
+  from sqlalchemy import (
+      Boolean,
+      CheckConstraint,
+      DateTime,
+      ForeignKey,
+      Integer,
+      Numeric,
+      String,
+      UniqueConstraint,
+      create_engine,
+  )
+  from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+  class Base(DeclarativeBase):
+      """Базовый класс для всех ORM-моделей."""
+
+
+  class Cookie(Base):
+      __tablename__ = "cookies"
+
+      cookie_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      cookie_name: Mapped[str | None] = mapped_column(String(50), index=True)
+      cookie_recipie_url: Mapped[str | None] = mapped_column(String(255))
+      cookie_sku: Mapped[str | None] = mapped_column(String(55))
+      quantity: Mapped[int | None] = mapped_column(Integer)
+      unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+
+      __table_args__ = (CheckConstraint("unit_cost >= 0.00", name="unit_cost_positive"),)
+
+      # Связь: одна cookie -> много line_items
+      line_items: Mapped[list["LineItem"]] = relationship(back_populates="cookie")
+
+      def __repr__(self) -> str:
+          return f"Cookie(cookie_id={self.cookie_id!r}, cookie_name={self.cookie_name!r})"
+
+
+  class User(Base):
+      __tablename__ = "users"
+
+      user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      username: Mapped[str] = mapped_column(String(15), nullable=False)
+      email_address: Mapped[str] = mapped_column(String(255), nullable=False)
+      phone: Mapped[str] = mapped_column(String(20), nullable=False)
+      password: Mapped[str] = mapped_column(String(25), nullable=False)
+      created_on: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.now)
+      updated_on: Mapped[datetime | None] = mapped_column(
+          DateTime, default=datetime.now, onupdate=datetime.now
+      )
+
+      __table_args__ = (UniqueConstraint("username", name="uix_username"),)
+
+      # Связь: один user -> много orders
+      orders: Mapped[list["Order"]] = relationship(back_populates="user")
+
+      def __repr__(self) -> str:
+          return f"User(user_id={self.user_id!r}, username={self.username!r})"
+
+
+  class Order(Base):
+      __tablename__ = "orders"
+
+      order_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      user_id: Mapped[int | None] = mapped_column(ForeignKey("users.user_id"))
+      shipped: Mapped[bool | None] = mapped_column(Boolean, default=False)
+
+      # Связи
+      user: Mapped["User | None"] = relationship(back_populates="orders")
+      line_items: Mapped[list["LineItem"]] = relationship(back_populates="order")
+
+      def __repr__(self) -> str:
+          return f"Order(order_id={self.order_id!r}, user_id={self.user_id!r})"
+
+
+  class LineItem(Base):
+      __tablename__ = "line_items"
+
+      line_items_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.order_id"))
+      cookie_id: Mapped[int | None] = mapped_column(ForeignKey("cookies.cookie_id"))
+      quantity: Mapped[int | None] = mapped_column(Integer)
+      extended_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+
+      # Связи
+      order: Mapped["Order | None"] = relationship(back_populates="line_items")
+      cookie: Mapped["Cookie | None"] = relationship(back_populates="line_items")
+
+      def __repr__(self) -> str:
+          return (
+              f"LineItem(line_items_id={self.line_items_id!r}, "
+              f"order_id={self.order_id!r}, cookie_id={self.cookie_id!r})"
+          )
+
+
+  if __name__ == "__main__":
+      engine = create_engine("sqlite:///:memory:", echo=True)
+      Base.metadata.create_all(engine)
 #+END_SRC
