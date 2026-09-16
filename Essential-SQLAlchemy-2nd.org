@@ -256,3 +256,639 @@
       engine = create_engine("sqlite:///:memory:", echo=True)
       Base.metadata.create_all(engine)
 #+END_SRC
+
+* Chapter 2: Working with Data via SQLAlchemy Core
+:PROPERTIES:
+  :header-args:python: :session *ch2*
+  :header-args: :cache no
+:END:
+
+#+NAME: PRE0
+#+BEGIN_SRC python :tangle no :noweb no :results none
+  from datetime import datetime
+
+  from sqlalchemy import (
+      Boolean,
+      CheckConstraint,
+      Column,
+      DateTime,
+      ForeignKey,
+      Integer,
+      MetaData,
+      Numeric,
+      PrimaryKeyConstraint,
+      String,
+      Table,
+      UniqueConstraint,
+      create_engine,
+  )
+  from sqlparse import format as sqlformat
+
+
+  def sqlf(
+      sql: str | object,
+      reindent=True,
+      keyword_case="upper",
+      indent_width=2,
+      strip_comments=False,
+      identifier_case="lower",
+  ):
+      if not isinstance(sql, str):
+          sql = str(sql)
+      return sqlformat(
+          sql,
+          encoding="utf8",
+          reindent=reindent,
+          keyword_case=keyword_case,
+          indent_width=indent_width,
+          strip_comments=strip_comments,
+          identifier_case=identifier_case,
+      )
+
+
+  metadata = MetaData()
+
+  cookies = Table(
+      "cookies",
+      metadata,
+      Column("cookie_id", Integer(), primary_key=True),
+      Column("cookie_name", String(50), index=True),
+      Column("cookie_recipe_url", String(255), unique=True),
+      Column("cookie_sku", String(55), unique=True),
+      Column("quantity", Integer()),
+      Column("unit_cost", Numeric(12, 2)),
+      CheckConstraint("unit_cost >= 0.00", name="unit_cost_positive"),
+  )
+
+  users = Table(
+      "users",
+      metadata,
+      Column("user_id", Integer()),
+      Column("username", String(15), nullable=False),
+      Column("email_address", String(255), nullable=False),
+      Column("phone", String(20), nullable=False),
+      Column("password", String(25), nullable=False),
+      Column("created_on", DateTime(), default=datetime.now),
+      Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now),
+      PrimaryKeyConstraint("user_id", name="user_pk"),
+      UniqueConstraint("username", name="uix_username"),
+  )
+
+  orders = Table(
+      "orders",
+      metadata,
+      Column("order_id", Integer(), primary_key=True),
+      Column("user_id", ForeignKey("users.user_id")),
+      Column("shipped", Boolean(), default=False),
+  )
+
+
+  line_items = Table(
+      "line_items",
+      metadata,
+      Column("line_items_id", Integer(), primary_key=True),
+      Column("order_id", ForeignKey("orders.order_id")),
+      Column("cookie_id", ForeignKey("cookies.cookie_id")),
+      Column("quantity", Integer()),
+      Column("extended_cost", Numeric(12, 2)),
+  )
+
+  engine = create_engine("sqlite:///:memory:", echo=True)
+  connection = engine.connect()
+  metadata.create_all(engine)
+#+END_SRC
+
+** SQLAlchemy v1
+
+*** Insert Data
+#+NAME: A2
+#+BEGIN_SRC python :results value
+  ins = cookies.insert().values(
+      cookie_name="chocolate chip",
+      cookie_recipe_url="http://some.aweso.me/cookie/recipe.html",
+      cookie_sku="CC01",
+      quantity="12",
+      unit_cost="0.50"
+  )
+  sqlf(ins)
+#+END_SRC
+
+#+RESULTS[6c5ae602a67e3d9c44ec5b557dbe4c9caa045f7d]: A2
+: INSERT INTO cookies (cookie_name, cookie_recipe_url, cookie_sku, quantity, unit_cost)
+: VALUES (:cookie_name, :cookie_recipe_url, :cookie_sku, :quantity, :unit_cost)
+
+#+NAME: B2
+#+BEGIN_SRC python :results value
+  import json
+
+  json.dumps(ins.compile().params, indent=2)
+#+END_SRC
+
+#+RESULTS[6c84e4959502481d55c0eede700458833e44cb09]: B2
+: {
+:   "cookie_name": "chocolate chip",
+:   "cookie_recipe_url": "http://some.aweso.me/cookie/recipe.html",
+:   "cookie_sku": "CC01",
+:   "quantity": "12",
+:   "unit_cost": "0.50"
+: }
+
+#+NAME: C2
+#+BEGIN_SRC python :results table
+  result = connection.execute(ins)
+  result.inserted_primary_key
+#+END_SRC
+
+#+RESULTS[2f53d5414462ab280cdac9899df147cdfb23ca85]: C2
+| 1 |
+
+#+NAME: D2
+#+BEGIN_SRC python :results table
+  ins = cookies.insert()
+  result = connection.execute(
+      ins,
+      dict(
+          cookie_name="dark chocolate chip",
+          cookie_recipe_url="http://some.aweso.me/cookie/recipe_dark.html",
+          cookie_sku="CC02",
+          quantity=1,
+          unit_cost=0.75,
+      ),
+  )
+  result.inserted_primary_key
+#+END_SRC
+
+#+RESULTS[ce29752b9e0ffb2e8359d9455b40c0177eaed45b]: D2
+| 2 |
+
+#+NAME: E2
+#+BEGIN_SRC python :results table
+  from sqlalchemy import insert
+  ins = insert(cookies).values(
+      cookie_name="ligth chocolate chip",
+      cookie_recipe_url="http://some.aweso.me/cookie/recipe_light.html",
+      cookie_sku="CC03",
+      quantity=10,
+      unit_cost=0.5
+  )
+  result = connection.execute(ins)
+  result.inserted_primary_key
+#+END_SRC
+
+#+RESULTS[27f2d7147460a4ef494532268ad9635b7b554f06]: E2
+| 3 |
+
+#+BEGIN_SRC python :results table
+  ins = cookies.insert()
+  inventory_list = [
+      {
+          "cookie_name": "peanut butter",
+          "cookie_recipe_url": "http://some.aweso.me/cookie/panut.html",
+          "cookie_sku": "PB01",
+          "quantity": 24,
+          "unit_cost": 0.25
+      },
+      {
+          "cookie_name": "oatmeal raisin",
+          "cookie_recipe_url": "http://some.okay.me/cookie/raisin.html",
+          "cookie_sku": "EWW01",
+          "quantity": 100,
+          "unit_cost": 1.00
+      }
+  ]
+
+  result = connection.execute(ins, inventory_list)
+  result.inserted_primary_key_rows
+#+END_SRC
+
+#+RESULTS[4a8500d49f6c26986acb280384da05aba54bef5c]:
+| None |
+| None |
+
+*** Querying Data
+#+BEGIN_SRC python :results table
+  from sqlalchemy.sql import select
+
+  s = select(cookies)
+  # ResultProxy
+  rp = connection.execute(s)
+  rp.fetchall()
+#+END_SRC
+
+#+RESULTS[e34d92c2943fc699b5606f0b46be7beb21db1388]:
+| 1 | chocolate chip       | http://some.aweso.me/cookie/recipe.html       | CC01  |  12 | Decimal | (0.50) |
+| 2 | dark chocolate chip  | http://some.aweso.me/cookie/recipe_dark.html  | CC02  |   1 | Decimal | (0.75) |
+| 3 | ligth chocolate chip | http://some.aweso.me/cookie/recipe_light.html | CC03  |  10 | Decimal | (0.50) |
+| 4 | peanut butter        | http://some.aweso.me/cookie/panut.html        | PB01  |  24 | Decimal | (0.25) |
+| 5 | oatmeal raisin       | http://some.okay.me/cookie/raisin.html        | EWW01 | 100 | Decimal | (1.00) |
+
+
+#+BEGIN_SRC python :results table
+  s = cookies.select()
+  rp = connection.execute(s)
+  results = rp.fetchall()
+  results
+#+END_SRC
+
+#+RESULTS[2800f4ee31f49d7d6b362d7ee7093f65108d076a]:
+| 1 | chocolate chip       | http://some.aweso.me/cookie/recipe.html       | CC01  |  12 | Decimal | (0.50) |
+| 2 | dark chocolate chip  | http://some.aweso.me/cookie/recipe_dark.html  | CC02  |   1 | Decimal | (0.75) |
+| 3 | ligth chocolate chip | http://some.aweso.me/cookie/recipe_light.html | CC03  |  10 | Decimal | (0.50) |
+| 4 | peanut butter        | http://some.aweso.me/cookie/panut.html        | PB01  |  24 | Decimal | (0.25) |
+| 5 | oatmeal raisin       | http://some.okay.me/cookie/raisin.html        | EWW01 | 100 | Decimal | (1.00) |
+
+**** ResultProxy
+#+BEGIN_SRC python :results table
+  first_row = results[0]
+  (
+      first_row[1],
+      first_row.cookie_name,
+      # так не работает в SQLAlchemy 2
+      #first_row[cookies.c.cookie_name],
+      # так работает в SQLAlchemy 2
+      first_row._mapping[cookies.c.cookie_name]
+  )
+#+END_SRC
+
+#+RESULTS[0e4b28e683fb34c9cf927a4ee33749f0c86a4e79]:
+| chocolate chip | chocolate chip | chocolate chip |
+
+#+BEGIN_SRC python :results output
+  rp = connection.execute(s)
+  for record in rp:
+      print(record.cookie_name)
+#+END_SRC
+
+#+RESULTS[111aa8e58f95f1c58373419ef284b39f24928b09]:
+: 2026-09-16 15:38:27,551 INFO sqlalchemy.engine.Engine SELECT cookies.cookie_id, cookies.cookie_name, cookies.cookie_recipe_url, cookies.cookie_sku, cookies.quantity, cookies.unit_cost 
+: FROM cookies
+: 2026-09-16 15:38:27,551 INFO sqlalchemy.engine.Engine [cached since 0.09296s ago] ()
+: chocolate chip
+: dark chocolate chip
+: ligth chocolate chip
+: peanut butter
+: oatmeal raisin
+
+**** Controlling the Columns in the Query
+#+BEGIN_SRC python :results output
+  s = select(cookies.c.cookie_name, cookies.c.quantity)
+  rp = connection.execute(s)
+  print(rp.keys())
+  result = rp.first()
+  print(result)
+#+END_SRC
+
+#+RESULTS[d36e227d4963ac6498d81bc68b7230f0482aee36]:
+: 2026-09-16 15:38:27,565 INFO sqlalchemy.engine.Engine SELECT cookies.cookie_name, cookies.quantity 
+: FROM cookies
+: 2026-09-16 15:38:27,565 INFO sqlalchemy.engine.Engine [generated in 0.00014s] ()
+: RMKeyView(['cookie_name', 'quantity'])
+: ('chocolate chip', 12)
+
+**** Ordering
+#+BEGIN_SRC python :results output
+  s = select(cookies.c.cookie_name, cookies.c.quantity)
+  s = s.order_by(cookies.c.quantity)
+  rp = connection.execute(s)
+  for cookie in rp:
+      print("{} - {}".format(cookie.quantity, cookie.cookie_name))
+#+END_SRC
+
+#+RESULTS[1a2648ac7db3983f3b128e81e12e34b1e0e3511b]:
+: 2026-09-16 15:38:27,579 INFO sqlalchemy.engine.Engine SELECT cookies.cookie_name, cookies.quantity 
+: FROM cookies ORDER BY cookies.quantity
+: 2026-09-16 15:38:27,579 INFO sqlalchemy.engine.Engine [generated in 0.00012s] ()
+: 1 - dark chocolate chip
+: 10 - ligth chocolate chip
+: 12 - chocolate chip
+: 24 - peanut butter
+: 100 - oatmeal raisin
+
+#+BEGIN_SRC python :results table
+  from sqlalchemy import desc
+  s = select(cookies.c.cookie_name, cookies.c.quantity)
+  s = s.order_by(desc(cookies.c.quantity))
+  rp = connection.execute(s)
+  rp.fetchall()
+#+END_SRC
+
+#+RESULTS[223725263b0eabd2280efdb561fdde8f1e40f11d]:
+| oatmeal raisin       | 100 |
+| peanut butter        |  24 |
+| chocolate chip       |  12 |
+| ligth chocolate chip |  10 |
+| dark chocolate chip  |   1 |
+
+**** Limiting
+#+BEGIN_SRC python :results output
+  s = select(cookies.c.cookie_name, cookies.c.quantity)
+  s = s.order_by(cookies.c.quantity)
+  s = s.limit(2)
+  rp = connection.execute(s)
+  print([result.cookie_name for result in rp])
+#+END_SRC
+
+#+RESULTS[61fc508f77cde00bb8a46a1cff9f7714585d6bac]:
+: 2026-09-16 15:38:27,623 INFO sqlalchemy.engine.Engine SELECT cookies.cookie_name, cookies.quantity 
+: FROM cookies ORDER BY cookies.quantity
+:  LIMIT ? OFFSET ?
+: 2026-09-16 15:38:27,623 INFO sqlalchemy.engine.Engine [generated in 0.00015s] (2, 0)
+: ['dark chocolate chip', 'ligth chocolate chip']
+
+**** Functions and Labels
+#+BEGIN_SRC python :results output
+  from sqlalchemy.sql import func
+
+  s = select(func.sum(cookies.c.quantity))
+  rp = connection.execute(s)
+  print(rp.scalar())
+#+END_SRC
+
+#+RESULTS[dab408afcef7a07ab4529319e360e98963ef9253]:
+: 2026-09-16 15:38:27,637 INFO sqlalchemy.engine.Engine SELECT sum(cookies.quantity) AS sum_1 
+: FROM cookies
+: 2026-09-16 15:38:27,637 INFO sqlalchemy.engine.Engine [generated in 0.00015s] ()
+: 147
+
+#+BEGIN_SRC python :results output
+  s = select(func.count(cookies.c.cookie_name))
+  rp = connection.execute(s)
+  record = rp.first()
+  print(record._fields)
+  print(record.count_1)
+#+END_SRC
+
+#+RESULTS[cd4d9e1c7b306fcaac0f2ec879ba6eb9b8820a76]:
+: 2026-09-16 15:38:27,650 INFO sqlalchemy.engine.Engine SELECT count(cookies.cookie_name) AS count_1 
+: FROM cookies
+: 2026-09-16 15:38:27,650 INFO sqlalchemy.engine.Engine [generated in 0.00012s] ()
+: ('count_1',)
+: 5
+
+#+BEGIN_SRC python :results output
+  s = select(func.count(cookies.c.cookie_name).label('inventory_count'))
+  rp = connection.execute(s)
+  record = rp.first()
+  print(record._fields)
+  print(record.inventory_count)
+#+END_SRC
+
+#+RESULTS[631333575ed407008ac3e744e2dd1071d2ad5fc8]:
+: 2026-09-16 15:38:27,664 INFO sqlalchemy.engine.Engine SELECT count(cookies.cookie_name) AS inventory_count 
+: FROM cookies
+: 2026-09-16 15:38:27,664 INFO sqlalchemy.engine.Engine [generated in 0.00016s] ()
+: ('inventory_count',)
+: 5
+
+**** Filtering
+#+BEGIN_SRC python :results table
+  s = select(cookies).where(cookies.c.cookie_name == "chocolate chip")
+  rp = connection.execute(s)
+  record = rp.first()
+  [
+      (k, repr(v) if hasattr(v, "quantize") else v)
+      for k, v in dict(record._mapping.items()).items()
+  ]
+#+END_SRC
+
+#+RESULTS[eeffa461b10a57c7ba2d693a96c1074d82ddd5dd]:
+| cookie_id         | 1                                       |
+| cookie_name       | chocolate chip                          |
+| cookie_recipe_url | http://some.aweso.me/cookie/recipe.html |
+| cookie_sku        | CC01                                    |
+| quantity          | 12                                      |
+| unit_cost         | Decimal('0.50')                         |
+
+#+BEGIN_SRC python :results output
+  s = select(cookies).where(cookies.c.cookie_name.like("%chocolate%"))
+  rp = connection.execute(s)
+  for record in rp:
+      print(record.cookie_name)
+#+END_SRC
+
+#+RESULTS[1923587b001fd049bf657d33ffc97e3313882d08]:
+: 2026-09-16 15:38:27,710 INFO sqlalchemy.engine.Engine SELECT cookies.cookie_id, cookies.cookie_name, cookies.cookie_recipe_url, cookies.cookie_sku, cookies.quantity, cookies.unit_cost 
+: FROM cookies 
+: WHERE cookies.cookie_name LIKE ?
+: 2026-09-16 15:38:27,710 INFO sqlalchemy.engine.Engine [generated in 0.00015s] ('%chocolate%',)
+: chocolate chip
+: dark chocolate chip
+: ligth chocolate chip
+
+#+BEGIN_SRC python :results table
+  s = select(cookies.c.cookie_name, "SKU-" + cookies.c.cookie_sku)
+  [row for row in connection.execute(s)]
+#+END_SRC
+
+#+RESULTS[43fc9fc739efdcb3257ce1df944786476e960b19]:
+| chocolate chip       | SKU-CC01  |
+| dark chocolate chip  | SKU-CC02  |
+| ligth chocolate chip | SKU-CC03  |
+| peanut butter        | SKU-PB01  |
+| oatmeal raisin       | SKU-EWW01 |
+
+#+BEGIN_SRC python :results table
+  from sqlalchemy import cast
+
+  s = select(
+      cookies.c.cookie_name,
+      cast((cookies.c.quantity * cookies.c.unit_cost), Numeric(12, 2)).label("inv_cost"),
+  )
+  [(row.cookie_name, repr(row.inv_cost)) for row in connection.execute(s)]
+#+END_SRC
+
+#+RESULTS[e77d9a46c98a0d29f5d2e887b32d948c8aff4b24]:
+| chocolate chip       | Decimal('6.00')   |
+| dark chocolate chip  | Decimal('0.75')   |
+| ligth chocolate chip | Decimal('5.00')   |
+| peanut butter        | Decimal('6.00')   |
+| oatmeal raisin       | Decimal('100.00') |
+
+**** Conjunctions
+#+BEGIN_SRC python :results table
+  from sqlalchemy import and_, or_, not_
+
+  s = select(cookies).where(and_(cookies.c.quantity > 23, cookies.c.unit_cost < 0.40))
+  [row.cookie_name for row in connection.execute(s)]
+#+END_SRC
+
+#+RESULTS[26e274d9d4a427015efa928c324c4c0424561b44]:
+| peanut butter |
+
+#+BEGIN_SRC python :results table
+  s = select(cookies).where(
+      or_(cookies.c.quantity.between(10, 50), cookies.c.cookie_name.contains("chip"))
+  )
+  [(row.cookie_name,) for row in connection.execute(s)]
+#+END_SRC
+
+#+RESULTS[59dc52c5605d049ac5a987e4586dc5435b449116]:
+| chocolate chip       |
+| dark chocolate chip  |
+| ligth chocolate chip |
+| peanut butter        |
+
+*** Updating Data
+#+BEGIN_SRC python :results value
+  from sqlalchemy import update
+
+  u = update(cookies).where(cookies.c.cookie_name == "chocolate chip")
+  u = u.values(quantity=(cookies.c.quantity + 120))
+  result = connection.execute(u)
+  result.rowcount
+#+END_SRC
+
+#+RESULTS[847d575b29c958aac6097fd1f5f38ab15233c881]:
+: 1
+
+#+BEGIN_SRC python :results table
+  s = select(cookies).where(cookies.c.cookie_name == "chocolate chip")
+  result = connection.execute(s).first()
+  [
+      (
+          key,
+          (
+              repr(result._mapping[key])
+              if hasattr(result._mapping[key], "quantize")
+              else result._mapping[key]
+          ),
+      )
+      for key in result._mapping.keys()
+  ]
+#+END_SRC
+
+#+RESULTS[3b87446799c9d1eafeac3f98a9b95850e0392495]:
+| cookie_id         | 1                                       |
+| cookie_name       | chocolate chip                          |
+| cookie_recipe_url | http://some.aweso.me/cookie/recipe.html |
+| cookie_sku        | CC01                                    |
+| quantity          | 132                                     |
+| unit_cost         | Decimal('0.50')                         |
+
+*** Deleting Data
+#+BEGIN_SRC python :results value
+  from sqlalchemy import delete
+
+  u = delete(cookies).where(cookies.c.cookie_name == "dark chocolate chip")
+  result = connection.execute(u)
+  result.rowcount
+#+END_SRC
+
+#+RESULTS[0ca3bff6e5691d71853f6a179a07305f7927b9c5]:
+: 1
+
+#+BEGIN_SRC python :results value
+  s = select(cookies).where(cookies.c.cookie_name == "dark chocolate chip")
+  result = connection.execute(s).fetchall()
+  len(result)
+#+END_SRC
+
+#+RESULTS[0186e481f8730015502615c0c5317b7021defdab]:
+: 0
+
+*** Joins
+#+BEGIN_SRC python :results silent
+  customer_list = [
+      {
+          "username": "cookiemon",
+          "email_address": "mon@cookie.com",
+          "phone": "111-111-1111",
+          "password": "password",
+      },
+      {
+          "username": "cakeeater",
+          "email_address": "cakeeater@cake.com",
+          "phone": "222-222-2222",
+          "password": "password",
+      },
+      {
+          "username": "pieguy",
+          "email_address": "guy@pie.com",
+          "phone": "333-333-3333",
+          "password": "password",
+      },
+  ]
+  ins = users.insert()
+  result = connection.execute(ins, customer_list)
+#+END_SRC
+
+#+BEGIN_SRC python :results none
+  ins = insert(orders).values(user_id=1, order_id=1)
+  result = connection.execute(ins)
+  ins = insert(line_items)
+  order_items = [
+      {"order_id": 1, "cookie_id": 1, "quantity": 2, "extended_cost": 1.00},
+      {"order_id": 1, "cookie_id": 3, "quantity": 12, "extended_cost": 3.00},
+  ]
+  result = connection.execute(ins, order_items)
+  ins = insert(orders).values(user_id=2, order_id=2)
+  result = connection.execute(ins)
+  ins = insert(line_items)
+  order_items = [
+      {"order_id": 2, "cookie_id": 1, "quantity": 24, "extended_cost": 12.00},
+      {"order_id": 2, "cookie_id": 4, "quantity": 6, "extended_cost": 6.00},
+  ]
+  result = connection.execute(ins, order_items)
+#+END_SRC
+
+#+BEGIN_SRC python :results table
+  s = select(line_items)
+  rp = connection.execute(s)
+  [tuple(f for f in rp.keys())] + [row for row in rp]
+#+END_SRC
+
+#+RESULTS[6c67ac82f1b3fa17449e94614678bdd9b9a86c01]:
+| line_items_id | order_id | cookie_id | quantity | extended_cost |         |
+|             1 |        1 |         1 |        2 | Decimal       | (1.00)  |
+|             2 |        1 |         3 |       12 | Decimal       | (3.00)  |
+|             3 |        2 |         1 |       24 | Decimal       | (12.00) |
+|             4 |        2 |         4 |        6 | Decimal       | (6.00)  |
+
+
+#+BEGIN_SRC python :results table
+  s = select(orders)
+  rp = connection.execute(s)
+  [tuple(f for f in rp.keys())] + [row for row in rp]
+#+END_SRC
+
+#+RESULTS[d267590cf86f6d096b1bb878728114e7c6714fb0]:
+| order_id | user_id | shipped |
+|        1 |       1 | False   |
+|        2 |       2 | False   |
+
+
+#+BEGIN_SRC python :results table
+  s = select(users)
+  rp = connection.execute(s)
+  [tuple(f for f in rp.keys())] + [row for row in rp]
+#+END_SRC
+
+#+RESULTS[5ecd8eac1228fddbc2304d381cc0148fc740d30d]:
+| user_id | username  | email_address      |        phone | password | created_on        | updated_on                  |                   |                             |
+|       1 | cookiemon | mon@cookie.com     | 111-111-1111 | password | datetime.datetime | (2026 9 16 15 39 54 867291) | datetime.datetime | (2026 9 16 15 39 54 867299) |
+|       2 | cakeeater | cakeeater@cake.com | 222-222-2222 | password | datetime.datetime | (2026 9 16 15 39 54 867301) | datetime.datetime | (2026 9 16 15 39 54 867302) |
+|       3 | pieguy    | guy@pie.com        | 333-333-3333 | password | datetime.datetime | (2026 9 16 15 39 54 867302) | datetime.datetime | (2026 9 16 15 39 54 867303) |
+
+#+BEGIN_SRC python :results table :cache no
+  columns = [
+      orders.c.order_id,
+      users.c.username,
+      users.c.phone,
+      cookies.c.cookie_name,
+      line_items.c.quantity,
+      line_items.c.extended_cost,
+  ]
+
+  cookiemon_orders = (
+      select(*columns)
+      .select_from(
+          orders
+          .join(users, orders.c.user_id == users.c.user_id)
+          .join(line_items, orders.c.order_id == line_items.c.order_id)
+          .join(cookies, line_items.c.cookie_id == cookies.c.cookie_id)
+      )
+      .where(users.c.username == "cookiemon")
+  )
+  result = connection.execute(cookiemon_orders)
+  [row for row in result]
+#+END_SRC
