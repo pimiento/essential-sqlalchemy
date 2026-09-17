@@ -891,7 +891,7 @@
 | 1 | cookiemon | 111-111-1111 | chocolate chip       |  2 | Decimal | (1.00) |
 | 1 | cookiemon | 111-111-1111 | ligth chocolate chip | 12 | Decimal | (3.00) |
 
-** TODO SQLAlchemy v2
+** SQLAlchemy v2
 :PROPERTIES:
 :header-args:python: :cache no
 :header-args:python: :tangle ch2-v2.py
