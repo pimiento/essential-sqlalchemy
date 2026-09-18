@@ -1523,3 +1523,746 @@
 #+RESULTS:
 | 1 | cookiemon | 111-111-1111 | chocolate chip       |  2 | Decimal | (1.00) |
 | 1 | cookiemon | 111-111-1111 | ligth chocolate chip | 12 | Decimal | (3.00) |
+
+* Chapter 3: Exceptions and Transactions
+
+** SQLAlchemy v1
+:PROPERTIES:
+  :header-args: :cache no
+  :header-args:python: :tangle ch3-v1.py
+  :header-args: :session *ch3*
+:END:
+
+#+BEGIN_SRC python :shebang "#!/usr/bin/env python3" :results none
+  import sys
+
+  sys.stderr = sys.stdout
+
+  from datetime import datetime
+
+  from sqlalchemy import (
+      Boolean,
+      CheckConstraint,
+      Column,
+      DateTime,
+      ForeignKey,
+      Integer,
+      MetaData,
+      Numeric,
+      String,
+      Table,
+      create_engine,
+      PrimaryKeyConstraint,
+      UniqueConstraint,
+  )
+  from sqlparse import format as sqlformat
+
+
+  def sqlf(
+      sql: str | object,
+      reindent=True,
+      keyword_case="upper",
+      indent_width=2,
+      strip_comments=False,
+      identifier_case="lower",
+  ):
+      if not isinstance(sql, str):
+          sql = str(sql)
+      return sqlformat(
+          sql,
+          encoding="utf8",
+          reindent=reindent,
+          keyword_case=keyword_case,
+          indent_width=indent_width,
+          strip_comments=strip_comments,
+          identifier_case=identifier_case,
+      )
+
+
+  metadata = MetaData()
+
+  cookies = Table(
+      "cookies",
+      metadata,
+      Column("cookie_id", Integer(), primary_key=True),
+      Column("cookie_name", String(50), index=True),
+      Column("cookie_recipe_url", String(255), unique=True),
+      Column("cookie_sku", String(55), unique=True),
+      Column("quantity", Integer()),
+      Column("unit_cost", Numeric(12, 2)),
+      CheckConstraint("unit_cost >= 0.00", name="unit_cost_positive"),
+      CheckConstraint("quantity >= 0", name="quantity_positive"),
+  )
+
+  users = Table(
+      "users",
+      metadata,
+      Column("user_id", Integer()),
+      Column("username", String(15), nullable=False),
+      Column("email_address", String(255), nullable=False),
+      Column("phone", String(20), nullable=False),
+      Column("password", String(25), nullable=False),
+      Column("created_on", DateTime(), default=datetime.now),
+      Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now),
+      PrimaryKeyConstraint("user_id", name="user_pk"),
+      UniqueConstraint("username", name="uix_username"),
+  )
+
+  orders = Table(
+      "orders",
+      metadata,
+      Column("order_id", Integer(), primary_key=True),
+      Column("user_id", ForeignKey("users.user_id")),
+      Column("shipped", Boolean(), default=False),
+  )
+
+
+  line_items = Table(
+      "line_items",
+      metadata,
+      Column("line_items_id", Integer(), primary_key=True),
+      Column("order_id", ForeignKey("orders.order_id")),
+      Column("cookie_id", ForeignKey("cookies.cookie_id")),
+      Column("quantity", Integer()),
+      Column("extended_cost", Numeric(12, 2)),
+  )
+
+  engine = create_engine("sqlite:///:memory:", echo=True)
+  connection = engine.connect()
+  metadata.create_all(engine)
+#+END_SRC
+
+*** AttributeError
+#+BEGIN_SRC python :results output
+  import logging
+  from sqlalchemy import select, insert
+
+  ins = insert(users).values(
+      username="cookiemon",
+      email_address="mon@cookie.com",
+      phone="111-111-1111",
+      password="password",
+  )
+
+  result = connection.execute(ins)
+
+  s = select(users.c.username)
+  results = connection.execute(s)
+
+  try:
+      [(result.username, result.password) for result in results]
+  except AttributeError as exc:
+      logging.exception(results)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+2026-09-18 12:06:22,953 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-09-18 12:06:22,954 INFO sqlalchemy.engine.Engine INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (?, ?, ?, ?, ?, ?)
+INFO:sqlalchemy.engine.Engine:INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (?, ?, ?, ?, ?, ?)
+2026-09-18 12:06:22,954 INFO sqlalchemy.engine.Engine [generated in 0.00036s] ('cookiemon', 'mon@cookie.com', '111-111-1111', 'password', '2026-09-18 12:06:22.953895', '2026-09-18 12:06:22.953904')
+INFO:sqlalchemy.engine.Engine:[generated in 0.00036s] ('cookiemon', 'mon@cookie.com', '111-111-1111', 'password', '2026-09-18 12:06:22.953895', '2026-09-18 12:06:22.953904')
+2026-09-18 12:06:22,954 INFO sqlalchemy.engine.Engine SELECT users.username 
+FROM users
+INFO:sqlalchemy.engine.Engine:SELECT users.username 
+FROM users
+2026-09-18 12:06:22,954 INFO sqlalchemy.engine.Engine [generated in 0.00014s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00014s] ()
+ERROR:root:<sqlalchemy.engine.cursor.CursorResult object at 0x7fa8f6747950>
+Traceback (most recent call last):
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/result.py", line 211, in _key_not_found
+    self._key_fallback(key, None)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/cursor.py", line 851, in _key_fallback
+    raise exc.NoSuchColumnError(
+    ...<2 lines>...
+    ) from err
+sqlalchemy.exc.NoSuchColumnError: Could not locate column in row for column 'password'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/babel-sg4Ps9/python-VQah8h", line 17, in <module>
+    [(result.username, result.password) for result in results]
+                       ^^^^^^^^^^^^^^^
+  File "lib/sqlalchemy/cyextension/resultproxy.pyx", line 66, in sqlalchemy.cyextension.resultproxy.BaseRow.__getattr__
+  File "lib/sqlalchemy/cyextension/resultproxy.pyx", line 63, in sqlalchemy.cyextension.resultproxy.BaseRow._get_by_key_impl
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/result.py", line 213, in _key_not_found
+    raise AttributeError(ke.args[0]) from ke
+AttributeError: Could not locate column in row for column 'password'
+#+end_example
+*** IntegrityError
+#+BEGIN_SRC python :results output
+  from sqlalchemy.exc import IntegrityError
+
+  s = select(users.c.username)
+  print(connection.execute(s).fetchall())
+
+  ins = insert(users).values(
+      username="cookiemon",
+      email_address="damon@cookie.com",
+      phone="111-111-1111",
+      password="password",
+  )
+  try:
+      result = connection.execute(ins)
+  except IntegrityError as exc:
+      logging.exception(str(ins))
+#+END_SRC
+
+#+RESULTS[cdbcb9c1f18b5c62c2127f1ac9ffd14b2a38039e]:
+#+begin_example
+2026-09-18 12:06:22,969 INFO sqlalchemy.engine.Engine SELECT users.username 
+FROM users
+INFO:sqlalchemy.engine.Engine:SELECT users.username 
+FROM users
+2026-09-18 12:06:22,969 INFO sqlalchemy.engine.Engine [cached since 0.01439s ago] ()
+INFO:sqlalchemy.engine.Engine:[cached since 0.01439s ago] ()
+[('cookiemon',)]
+2026-09-18 12:06:22,969 INFO sqlalchemy.engine.Engine INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (?, ?, ?, ?, ?, ?)
+INFO:sqlalchemy.engine.Engine:INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (?, ?, ?, ?, ?, ?)
+2026-09-18 12:06:22,969 INFO sqlalchemy.engine.Engine [cached since 0.0159s ago] ('cookiemon', 'damon@cookie.com', '111-111-1111', 'password', '2026-09-18 12:06:22.969623', '2026-09-18 12:06:22.969627')
+INFO:sqlalchemy.engine.Engine:[cached since 0.0159s ago] ('cookiemon', 'damon@cookie.com', '111-111-1111', 'password', '2026-09-18 12:06:22.969623', '2026-09-18 12:06:22.969627')
+ERROR:root:INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (:username, :email_address, :phone, :password, :created_on, :updated_on)
+Traceback (most recent call last):
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: UNIQUE constraint failed: users.username
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/babel-sg4Ps9/python-Dqwfvm", line 13, in <module>
+    result = connection.execute(ins)
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) UNIQUE constraint failed: users.username
+[SQL: INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('cookiemon', 'damon@cookie.com', '111-111-1111', 'password', '2026-09-18 12:06:22.969623', '2026-09-18 12:06:22.969627')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+#+end_example
+*** Transactions
+#+BEGIN_SRC python :results none
+  ins = cookies.insert()
+  inventory_list = [
+      {
+          "cookie_name": "chocolate chip",
+          "cookie_recipe_url": "http://some.aweso.me/cookie/recipe.html",
+          "cookie_sku": "CC01",
+          "quantity": "12",
+          "unit_cost": "0.5",
+      },
+      {
+          "cookie_name": "dark chocolate chip",
+          "cookie_recipe_url": "http://some.aweso.me/cookie/recipe_dark.html",
+          "cookie_sku": "CC02",
+          "quantity": "1",
+          "unit_cost": "0.75",
+      },
+  ]
+  result = connection.execute(ins, inventory_list)
+#+END_SRC
+
+#+BEGIN_SRC python :results none
+  ins = insert(orders).values(user_id=1, order_id="1")
+  result = connection.execute(ins)
+  ins = insert(line_items)
+  order_items = [
+      {
+          "order_id": 1,
+          "cookie_id": 1,
+          "quantity": 9,
+          "extended_cost": 4.50,
+      }
+  ]
+  result = connection.execute(ins, order_items)
+
+  ins = insert(orders).values(user_id=1, order_id="2")
+  result = connection.execute(ins)
+  ins = insert(line_items)
+  order_items = [
+      {
+          "order_id": 2,
+          "cookie_id": 1,
+          "quantity": 4,
+          "extended_cost": 1.50,
+      },
+      {
+          "order_id": 2,
+          "cookie_id": 2,
+          "quantity": 1,
+          "extended_cost": 4.50,
+      },
+  ]
+  result = connection.execute(ins, order_items)
+#+END_SRC
+
+#+BEGIN_SRC python :results none
+  from sqlalchemy import update
+
+
+  def ship_it(order_id: int) -> None:
+      s = select(line_items.c.cookie_id, line_items.c.quantity)
+      s = s.where(line_items.c.order_id == order_id)
+      cookies_to_ship = connection.execute(s)
+      for cookie in cookies_to_ship:
+          u = (
+              update(cookies)
+              .where(cookies.c.cookie_id == cookie.cookie_id)
+              .values(quantity=cookies.c.quantity - cookie.quantity)
+          )
+          result = connection.execute(u)
+      u = update(orders).where(orders.c.order_id == order_id).values(shipped=True)
+      connection.execute(u)
+      print(f"Shipped order ID: {order_id}")
+#+END_SRC
+
+#+BEGIN_SRC python :results output
+  ship_it(1)
+  s = select(cookies.c.cookie_name, cookies.c.quantity)
+  print(connection.execute(s).fetchall())
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+2026-09-18 12:06:23,066 INFO sqlalchemy.engine.Engine SELECT line_items.cookie_id, line_items.quantity 
+FROM line_items 
+WHERE line_items.order_id = ?
+INFO:sqlalchemy.engine.Engine:SELECT line_items.cookie_id, line_items.quantity 
+FROM line_items 
+WHERE line_items.order_id = ?
+2026-09-18 12:06:23,066 INFO sqlalchemy.engine.Engine [generated in 0.00024s] (1,)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00024s] (1,)
+2026-09-18 12:06:23,067 INFO sqlalchemy.engine.Engine UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?
+INFO:sqlalchemy.engine.Engine:UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?
+2026-09-18 12:06:23,067 INFO sqlalchemy.engine.Engine [generated in 0.00009s] (9, 1)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00009s] (9, 1)
+2026-09-18 12:06:23,067 INFO sqlalchemy.engine.Engine UPDATE orders SET shipped=? WHERE orders.order_id = ?
+INFO:sqlalchemy.engine.Engine:UPDATE orders SET shipped=? WHERE orders.order_id = ?
+2026-09-18 12:06:23,067 INFO sqlalchemy.engine.Engine [generated in 0.00008s] (1, 1)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00008s] (1, 1)
+Shipped order ID: 1
+2026-09-18 12:06:23,067 INFO sqlalchemy.engine.Engine SELECT cookies.cookie_name, cookies.quantity 
+FROM cookies
+INFO:sqlalchemy.engine.Engine:SELECT cookies.cookie_name, cookies.quantity 
+FROM cookies
+2026-09-18 12:06:23,067 INFO sqlalchemy.engine.Engine [generated in 0.00006s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00006s] ()
+[('chocolate chip', 3), ('dark chocolate chip', 1)]
+#+end_example
+
+#+BEGIN_SRC python :results output
+  try:
+      ship_it(2)
+  except IntegrityError:
+      logging.exception("")
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+2026-09-18 12:07:29,522 INFO sqlalchemy.engine.Engine SELECT line_items.cookie_id, line_items.quantity 
+FROM line_items 
+WHERE line_items.order_id = ?
+INFO:sqlalchemy.engine.Engine:SELECT line_items.cookie_id, line_items.quantity 
+FROM line_items 
+WHERE line_items.order_id = ?
+2026-09-18 12:07:29,522 INFO sqlalchemy.engine.Engine [cached since 66.46s ago] (2,)
+INFO:sqlalchemy.engine.Engine:[cached since 66.46s ago] (2,)
+2026-09-18 12:07:29,523 INFO sqlalchemy.engine.Engine UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?
+INFO:sqlalchemy.engine.Engine:UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?
+2026-09-18 12:07:29,523 INFO sqlalchemy.engine.Engine [cached since 66.46s ago] (4, 1)
+INFO:sqlalchemy.engine.Engine:[cached since 66.46s ago] (4, 1)
+ERROR:root:
+Traceback (most recent call last):
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: CHECK constraint failed: quantity_positive
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/babel-sg4Ps9/python-swDwMp", line 2, in <module>
+    ship_it(2)
+    ~~~~~~~^^^
+  File "<string>", line 14, in ship_it
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed: quantity_positive
+[SQL: UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?]
+[parameters: (4, 1)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+#+end_example
+
+#+BEGIN_SRC python :results none :cache yes
+  def ship_it(order_id: int) -> None:
+      s = select(line_items.c.cookie_id, line_items.c.quantity)
+      s = s.where(line_items.c.order_id == order_id)
+      transaction = connection.begin()
+      cookies_to_ship = connection.execute(s).fetchall()
+
+      try:
+          for cookie in cookies_to_ship:
+              u = update(cookies).where(cookies.c.cookie_id == cookie.cookie_id).values(quantity = cookies.c.quantity -cookie.quantity)
+              result = connection.execute(u)
+          u = update(orders).where(orders.c.order_id == order_id).values(shipped=True)
+          result = connection.execute(u)
+          print(f"Shipped order ID: {order_id}")
+          transaction.commit()
+      except IntegrityError as error:
+          transaction.rollback()
+          logging.exception()
+#+END_SRC
+** SQLAlchemy v2
+:PROPERTIES:
+  :header-args: :cache yes
+  :header-args:python: :tangle ch3-v2.py
+  :header-args: :session *ch3-v2*
+:END:
+#+BEGIN_SRC python :results output :shebang "#!/usr/bin/env python3"
+  #!/usr/bin/env python3
+  import sys
+
+  sys.stderr = sys.stdout
+
+  import logging
+  from datetime import datetime
+
+  from sqlalchemy import (
+      Boolean,
+      CheckConstraint,
+      Column,
+      DateTime,
+      ForeignKey,
+      Integer,
+      MetaData,
+      Numeric,
+      PrimaryKeyConstraint,
+      String,
+      Table,
+      UniqueConstraint,
+      create_engine,
+      insert,
+      select,
+      update,
+  )
+  from sqlalchemy.exc import IntegrityError
+  from sqlparse import format as sqlformat
+
+
+  def sqlf(
+      sql: str | object,
+      reindent=True,
+      keyword_case="upper",
+      indent_width=2,
+      strip_comments=False,
+      identifier_case="lower",
+  ):
+      if not isinstance(sql, str):
+          sql = str(sql)
+      return sqlformat(
+          sql,
+          encoding="utf8",
+          reindent=reindent,
+          keyword_case=keyword_case,
+          indent_width=indent_width,
+          strip_comments=strip_comments,
+          identifier_case=identifier_case,
+      )
+
+
+  metadata = MetaData()
+
+  cookies = Table(
+      "cookies",
+      metadata,
+      Column("cookie_id", Integer(), primary_key=True),
+      Column("cookie_name", String(50), index=True),
+      Column("cookie_recipe_url", String(255), unique=True),
+      Column("cookie_sku", String(55), unique=True),
+      Column("quantity", Integer()),
+      Column("unit_cost", Numeric(12, 2)),
+      CheckConstraint("unit_cost >= 0.00", name="unit_cost_positive"),
+      CheckConstraint("quantity >= 0", name="quantity_positive"),
+  )
+
+  users = Table(
+      "users",
+      metadata,
+      Column("user_id", Integer()),
+      Column("username", String(15), nullable=False),
+      Column("email_address", String(255), nullable=False),
+      Column("phone", String(20), nullable=False),
+      Column("password", String(25), nullable=False),
+      Column("created_on", DateTime(), default=datetime.now),
+      Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now),
+      PrimaryKeyConstraint("user_id", name="user_pk"),
+      UniqueConstraint("username", name="uix_username"),
+  )
+
+  orders = Table(
+      "orders",
+      metadata,
+      Column("order_id", Integer(), primary_key=True),
+      Column("user_id", ForeignKey("users.user_id")),
+      Column("shipped", Boolean(), default=False),
+  )
+
+  line_items = Table(
+      "line_items",
+      metadata,
+      Column("line_items_id", Integer(), primary_key=True),
+      Column("order_id", ForeignKey("orders.order_id")),
+      Column("cookie_id", ForeignKey("cookies.cookie_id")),
+      Column("quantity", Integer()),
+      Column("extended_cost", Numeric(12, 2)),
+  )
+
+  engine = create_engine("sqlite:///:memory:", echo=True)
+
+  with engine.begin() as connection:
+      metadata.create_all(connection)
+
+      # --- insert одного пользователя ---
+      ins = insert(users).values(
+          username="cookiemon",
+          email_address="mon@cookie.com",
+          phone="111-111-1111",
+          password="password",
+      )
+      connection.execute(ins)
+
+      # --- select возвращает Row, у которого есть .username ---
+      s = select(users.c.username, users.c.password)
+      results = connection.execute(s)
+      try:
+          [(row.username, row.password) for row in results]
+      except AttributeError:
+          logging.exception(results)
+
+      # --- проверка вставки ---
+      s = select(users.c.username)
+      print(connection.execute(s).fetchall())
+
+      # --- нарушение уникальности username ---
+      ins = insert(users).values(
+          username="cookiemon",
+          email_address="damon@cookie.com",
+          phone="111-111-1111",
+          password="password",
+      )
+      try:
+          with connection.begin_nested():  # SAVEPOINT, чтобы не убить внешнюю транзакцию
+              connection.execute(ins)
+      except IntegrityError:
+          logging.exception(str(ins))
+
+      # --- массовая вставка cookies ---
+      inventory_list = [
+          {
+              "cookie_name": "chocolate chip",
+              "cookie_recipe_url": "http://some.aweso.me/cookie/recipe.html",
+              "cookie_sku": "CC01",
+              "quantity": "12",
+              "unit_cost": "0.5",
+          },
+          {
+              "cookie_name": "dark chocolate chip",
+              "cookie_recipe_url": "http://some.aweso.me/cookie/recipe_dark.html",
+              "cookie_sku": "CC02",
+              "quantity": "1",
+              "unit_cost": "0.75",
+          },
+      ]
+      connection.execute(insert(cookies), inventory_list)
+
+      # --- заказы ---
+      connection.execute(insert(orders).values(user_id=1, order_id="1"))
+      connection.execute(
+          insert(line_items),
+          [
+              {
+                  "order_id": 1,
+                  "cookie_id": 1,
+                  "quantity": 9,
+                  "extended_cost": 4.50,
+              }
+          ],
+      )
+
+      connection.execute(insert(orders).values(user_id=1, order_id="2"))
+      connection.execute(
+          insert(line_items),
+          [
+              {
+                  "order_id": 2,
+                  "cookie_id": 1,
+                  "quantity": 4,
+                  "extended_cost": 1.50,
+              },
+              {
+                  "order_id": 2,
+                  "cookie_id": 2,
+                  "quantity": 1,
+                  "extended_cost": 4.50,
+              },
+          ],
+      )
+
+
+  def ship_it(order_id: int) -> None:
+      """Версия без явной транзакции — каждый execute коммитится сам."""
+      s = select(line_items.c.cookie_id, line_items.c.quantity).where(
+          line_items.c.order_id == order_id
+      )
+      cookies_to_ship = connection.execute(s).fetchall()
+      for cookie in cookies_to_ship:
+          u = (
+              update(cookies)
+              .where(cookies.c.cookie_id == cookie.cookie_id)
+              .values(quantity=cookies.c.quantity - cookie.quantity)
+          )
+          connection.execute(u)
+      u = update(orders).where(orders.c.order_id == order_id).values(shipped=True)
+      connection.execute(u)
+      print(f"Shipped order ID: {order_id}")
+
+
+  def ship_it_atomic(order_id: int) -> None:
+      """Версия с явной транзакцией и rollback при ошибке."""
+      s = select(line_items.c.cookie_id, line_items.c.quantity).where(
+          line_items.c.order_id == order_id
+      )
+
+      with engine.begin() as conn:
+          cookies_to_ship = conn.execute(s).fetchall()
+          try:
+              for cookie in cookies_to_ship:
+                  u = (
+                      update(cookies)
+                      .where(cookies.c.cookie_id == cookie.cookie_id)
+                      .values(quantity=cookies.c.quantity - cookie.quantity)
+                  )
+                  conn.execute(u)
+              u = update(orders).where(orders.c.order_id == order_id).values(shipped=True)
+              conn.execute(u)
+              print(f"Shipped order ID: {order_id}")
+          except IntegrityError:
+              # with engine.begin() сам сделает rollback
+              logging.exception("Failed to ship order %s", order_id)
+              raise
+
+
+  # --- используем транзакционную версию ---
+  ship_it_atomic(1)
+  s = select(cookies.c.cookie_name, cookies.c.quantity)
+  with engine.connect() as conn:
+      print(conn.execute(s).fetchall())
+
+  try:
+      ship_it_atomic(2)
+  except IntegrityError:
+      logging.exception("")
+#+END_SRC
