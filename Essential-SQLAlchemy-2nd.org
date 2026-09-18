@@ -3173,3 +3173,73 @@ sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed:
 
       assert results == cookie_orders
 #+END_SRC
+
+* Chapter 5: Reflection
+
+** SQLAlchemy v2
+:PROPERTIES:
+:header-args: :tangle ch5-v2.py
+:header-args:python: :session *ch5*
+:END:
+
+#+BEGIN_SRC python :results none
+  from sqlalchemy import MetaData, create_engine
+  metadata = MetaData()
+  engine = create_engine("sqlite:///Chinook_Sqlite.sqlite")
+#+END_SRC
+
+#+BEGIN_SRC python :results table
+  from sqlalchemy import Table
+
+  artist = Table("Artist", metadata, autoload_with=engine)
+  artist.columns.keys()
+#+END_SRC
+
+#+RESULTS:
+| ArtistId | Name |
+
+#+BEGIN_SRC python :results table
+  from sqlalchemy import select
+
+  with engine.begin() as connection:
+      s = select(artist).limit(10)
+      result = connection.execute(s).fetchall()
+  result
+#+END_SRC
+
+#+RESULTS:
+|  1 | AC/DC                |
+|  2 | Accept               |
+|  3 | Aerosmith            |
+|  4 | Alanis Morissette    |
+|  5 | Alice In Chains      |
+|  6 | Antônio Carlos Jobim |
+|  7 | Apocalyptica         |
+|  8 | Audioslave           |
+|  9 | BackBeat             |
+| 10 | Billy Cobham         |
+
+#+BEGIN_SRC python :results value
+  album = Table('Album', metadata, autoload_with=engine)
+  res = metadata.tables['Album']
+  repr(res)
+#+END_SRC
+
+#+RESULTS:
+: Table('Album', MetaData(), Column('AlbumId', INTEGER(), table=<Album>, primary_key=True, nullable=False), Column('Title', NVARCHAR(length=160), table=<Album>, nullable=False), Column('ArtistId', INTEGER(), ForeignKey('Artist.ArtistId'), table=<Album>, nullable=False), schema=None)
+
+#+BEGIN_SRC python :results value
+  album.foreign_keys
+#+END_SRC
+
+#+RESULTS:
+: {ForeignKey('Artist.ArtistId')}
+
+*** Reflecting a Whole Database
+#+BEGIN_SRC python :results table
+  metadata.reflect(bind=engine)
+  list(metadata.tables.keys())
+#+END_SRC
+
+#+RESULTS:
+| Artist | Album | Customer | Employee | Genre | Invoice | InvoiceLine | Track | MediaType | Playlist | PlaylistTrack |
