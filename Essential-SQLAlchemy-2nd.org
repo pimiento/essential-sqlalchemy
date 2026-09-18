@@ -2266,3 +2266,910 @@ sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed:
   except IntegrityError:
       logging.exception("")
 #+END_SRC
+
+#+RESULTS:
+#+begin_example
+2026-09-18 12:21:58,909 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("cookies")
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("cookies")
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("users")
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-09-18 12:21:58,910 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("orders")
+2026-09-18 12:21:58,911 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-09-18 12:21:58,911 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("orders")
+2026-09-18 12:21:58,911 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-09-18 12:21:58,911 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("line_items")
+2026-09-18 12:21:58,911 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-09-18 12:21:58,911 INFO sqlalchemy.engine.Engine PRAGMA temp.table_info("line_items")
+2026-09-18 12:21:58,911 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-09-18 12:21:58,912 INFO sqlalchemy.engine.Engine 
+CREATE TABLE cookies (
+	cookie_id INTEGER NOT NULL, 
+	cookie_name VARCHAR(50), 
+	cookie_recipe_url VARCHAR(255), 
+	cookie_sku VARCHAR(55), 
+	quantity INTEGER, 
+	unit_cost NUMERIC(12, 2), 
+	PRIMARY KEY (cookie_id), 
+	CONSTRAINT unit_cost_positive CHECK (unit_cost >= 0.00), 
+	CONSTRAINT quantity_positive CHECK (quantity >= 0), 
+	UNIQUE (cookie_recipe_url), 
+	UNIQUE (cookie_sku)
+)
+
+
+2026-09-18 12:21:58,912 INFO sqlalchemy.engine.Engine [no key 0.00007s] ()
+2026-09-18 12:21:58,912 INFO sqlalchemy.engine.Engine CREATE INDEX ix_cookies_cookie_name ON cookies (cookie_name)
+2026-09-18 12:21:58,912 INFO sqlalchemy.engine.Engine [no key 0.00006s] ()
+2026-09-18 12:21:58,913 INFO sqlalchemy.engine.Engine 
+CREATE TABLE users (
+	user_id INTEGER NOT NULL, 
+	username VARCHAR(15) NOT NULL, 
+	email_address VARCHAR(255) NOT NULL, 
+	phone VARCHAR(20) NOT NULL, 
+	password VARCHAR(25) NOT NULL, 
+	created_on DATETIME, 
+	updated_on DATETIME, 
+	CONSTRAINT user_pk PRIMARY KEY (user_id), 
+	CONSTRAINT uix_username UNIQUE (username)
+)
+
+
+2026-09-18 12:21:58,913 INFO sqlalchemy.engine.Engine [no key 0.00006s] ()
+2026-09-18 12:21:58,913 INFO sqlalchemy.engine.Engine 
+CREATE TABLE orders (
+	order_id INTEGER NOT NULL, 
+	user_id INTEGER, 
+	shipped BOOLEAN, 
+	PRIMARY KEY (order_id), 
+	FOREIGN KEY(user_id) REFERENCES users (user_id)
+)
+
+
+2026-09-18 12:21:58,913 INFO sqlalchemy.engine.Engine [no key 0.00005s] ()
+2026-09-18 12:21:58,913 INFO sqlalchemy.engine.Engine 
+CREATE TABLE line_items (
+	line_items_id INTEGER NOT NULL, 
+	order_id INTEGER, 
+	cookie_id INTEGER, 
+	quantity INTEGER, 
+	extended_cost NUMERIC(12, 2), 
+	PRIMARY KEY (line_items_id), 
+	FOREIGN KEY(order_id) REFERENCES orders (order_id), 
+	FOREIGN KEY(cookie_id) REFERENCES cookies (cookie_id)
+)
+
+
+2026-09-18 12:21:58,913 INFO sqlalchemy.engine.Engine [no key 0.00005s] ()
+2026-09-18 12:21:58,915 INFO sqlalchemy.engine.Engine INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (?, ?, ?, ?, ?, ?)
+2026-09-18 12:21:58,915 INFO sqlalchemy.engine.Engine [generated in 0.00019s] ('cookiemon', 'mon@cookie.com', '111-111-1111', 'password', '2026-09-18 12:21:58.915122', '2026-09-18 12:21:58.915127')
+2026-09-18 12:21:58,916 INFO sqlalchemy.engine.Engine SELECT users.username, users.password 
+FROM users
+2026-09-18 12:21:58,916 INFO sqlalchemy.engine.Engine [generated in 0.00008s] ()
+2026-09-18 12:21:58,916 INFO sqlalchemy.engine.Engine SELECT users.username 
+FROM users
+2026-09-18 12:21:58,916 INFO sqlalchemy.engine.Engine [generated in 0.00007s] ()
+[('cookiemon',)]
+2026-09-18 12:21:58,916 INFO sqlalchemy.engine.Engine SAVEPOINT sa_savepoint_1
+2026-09-18 12:21:58,916 INFO sqlalchemy.engine.Engine [no key 0.00006s] ()
+2026-09-18 12:21:58,917 INFO sqlalchemy.engine.Engine INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (?, ?, ?, ?, ?, ?)
+2026-09-18 12:21:58,917 INFO sqlalchemy.engine.Engine [cached since 0.002053s ago] ('cookiemon', 'damon@cookie.com', '111-111-1111', 'password', '2026-09-18 12:21:58.917037', '2026-09-18 12:21:58.917039')
+2026-09-18 12:21:58,917 INFO sqlalchemy.engine.Engine ROLLBACK TO SAVEPOINT sa_savepoint_1
+2026-09-18 12:21:58,917 INFO sqlalchemy.engine.Engine [no key 0.00006s] ()
+ERROR:root:INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (:username, :email_address, :phone, :password, :created_on, :updated_on)
+Traceback (most recent call last):
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: UNIQUE constraint failed: users.username
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/babel-sg4Ps9/python-ObJFq6", line 134, in <module>
+    connection.execute(ins)
+    ~~~~~~~~~~~~~~~~~~^^^^^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) UNIQUE constraint failed: users.username
+[SQL: INSERT INTO users (username, email_address, phone, password, created_on, updated_on) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('cookiemon', 'damon@cookie.com', '111-111-1111', 'password', '2026-09-18 12:21:58.917037', '2026-09-18 12:21:58.917039')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-09-18 12:21:58,921 INFO sqlalchemy.engine.Engine INSERT INTO cookies (cookie_name, cookie_recipe_url, cookie_sku, quantity, unit_cost) VALUES (?, ?, ?, ?, ?)
+INFO:sqlalchemy.engine.Engine:INSERT INTO cookies (cookie_name, cookie_recipe_url, cookie_sku, quantity, unit_cost) VALUES (?, ?, ?, ?, ?)
+2026-09-18 12:21:58,921 INFO sqlalchemy.engine.Engine [generated in 0.00022s] [('chocolate chip', 'http://some.aweso.me/cookie/recipe.html', 'CC01', '12', 0.5), ('dark chocolate chip', 'http://some.aweso.me/cookie/recipe_dark.html', 'CC02', '1', 0.75)]
+INFO:sqlalchemy.engine.Engine:[generated in 0.00022s] [('chocolate chip', 'http://some.aweso.me/cookie/recipe.html', 'CC01', '12', 0.5), ('dark chocolate chip', 'http://some.aweso.me/cookie/recipe_dark.html', 'CC02', '1', 0.75)]
+2026-09-18 12:21:58,922 INFO sqlalchemy.engine.Engine INSERT INTO orders (order_id, user_id, shipped) VALUES (?, ?, ?)
+INFO:sqlalchemy.engine.Engine:INSERT INTO orders (order_id, user_id, shipped) VALUES (?, ?, ?)
+2026-09-18 12:21:58,922 INFO sqlalchemy.engine.Engine [generated in 0.00015s] ('1', 1, 0)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00015s] ('1', 1, 0)
+2026-09-18 12:21:58,922 INFO sqlalchemy.engine.Engine INSERT INTO line_items (order_id, cookie_id, quantity, extended_cost) VALUES (?, ?, ?, ?)
+INFO:sqlalchemy.engine.Engine:INSERT INTO line_items (order_id, cookie_id, quantity, extended_cost) VALUES (?, ?, ?, ?)
+2026-09-18 12:21:58,922 INFO sqlalchemy.engine.Engine [generated in 0.00014s] (1, 1, 9, 4.5)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00014s] (1, 1, 9, 4.5)
+2026-09-18 12:21:58,923 INFO sqlalchemy.engine.Engine INSERT INTO orders (order_id, user_id, shipped) VALUES (?, ?, ?)
+INFO:sqlalchemy.engine.Engine:INSERT INTO orders (order_id, user_id, shipped) VALUES (?, ?, ?)
+2026-09-18 12:21:58,923 INFO sqlalchemy.engine.Engine [cached since 0.001143s ago] ('2', 1, 0)
+INFO:sqlalchemy.engine.Engine:[cached since 0.001143s ago] ('2', 1, 0)
+2026-09-18 12:21:58,923 INFO sqlalchemy.engine.Engine INSERT INTO line_items (order_id, cookie_id, quantity, extended_cost) VALUES (?, ?, ?, ?)
+INFO:sqlalchemy.engine.Engine:INSERT INTO line_items (order_id, cookie_id, quantity, extended_cost) VALUES (?, ?, ?, ?)
+2026-09-18 12:21:58,923 INFO sqlalchemy.engine.Engine [generated in 0.00011s] [(2, 1, 4, 1.5), (2, 2, 1, 4.5)]
+INFO:sqlalchemy.engine.Engine:[generated in 0.00011s] [(2, 1, 4, 1.5), (2, 2, 1, 4.5)]
+2026-09-18 12:21:58,923 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+2026-09-18 12:21:58,924 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-09-18 12:21:58,924 INFO sqlalchemy.engine.Engine SELECT line_items.cookie_id, line_items.quantity 
+FROM line_items 
+WHERE line_items.order_id = ?
+INFO:sqlalchemy.engine.Engine:SELECT line_items.cookie_id, line_items.quantity 
+FROM line_items 
+WHERE line_items.order_id = ?
+2026-09-18 12:21:58,924 INFO sqlalchemy.engine.Engine [generated in 0.00010s] (1,)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00010s] (1,)
+2026-09-18 12:21:58,926 INFO sqlalchemy.engine.Engine UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?
+INFO:sqlalchemy.engine.Engine:UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?
+2026-09-18 12:21:58,926 INFO sqlalchemy.engine.Engine [generated in 0.00009s] (9, 1)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00009s] (9, 1)
+2026-09-18 12:21:58,926 INFO sqlalchemy.engine.Engine UPDATE orders SET shipped=? WHERE orders.order_id = ?
+INFO:sqlalchemy.engine.Engine:UPDATE orders SET shipped=? WHERE orders.order_id = ?
+2026-09-18 12:21:58,926 INFO sqlalchemy.engine.Engine [generated in 0.00012s] (1, 1)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00012s] (1, 1)
+Shipped order ID: 1
+2026-09-18 12:21:58,926 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+2026-09-18 12:21:58,927 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-09-18 12:21:58,927 INFO sqlalchemy.engine.Engine SELECT cookies.cookie_name, cookies.quantity 
+FROM cookies
+INFO:sqlalchemy.engine.Engine:SELECT cookies.cookie_name, cookies.quantity 
+FROM cookies
+2026-09-18 12:21:58,927 INFO sqlalchemy.engine.Engine [generated in 0.00012s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00012s] ()
+[('chocolate chip', 3), ('dark chocolate chip', 1)]
+2026-09-18 12:21:58,927 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+2026-09-18 12:21:58,927 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-09-18 12:21:58,927 INFO sqlalchemy.engine.Engine SELECT line_items.cookie_id, line_items.quantity 
+FROM line_items 
+WHERE line_items.order_id = ?
+INFO:sqlalchemy.engine.Engine:SELECT line_items.cookie_id, line_items.quantity 
+FROM line_items 
+WHERE line_items.order_id = ?
+2026-09-18 12:21:58,927 INFO sqlalchemy.engine.Engine [cached since 0.002892s ago] (2,)
+INFO:sqlalchemy.engine.Engine:[cached since 0.002892s ago] (2,)
+2026-09-18 12:21:58,928 INFO sqlalchemy.engine.Engine UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?
+INFO:sqlalchemy.engine.Engine:UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?
+2026-09-18 12:21:58,928 INFO sqlalchemy.engine.Engine [cached since 0.002047s ago] (4, 1)
+INFO:sqlalchemy.engine.Engine:[cached since 0.002047s ago] (4, 1)
+ERROR:root:Failed to ship order 2
+Traceback (most recent call last):
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: CHECK constraint failed: quantity_positive
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/babel-sg4Ps9/python-ObJFq6", line 224, in ship_it_atomic
+    conn.execute(u)
+    ~~~~~~~~~~~~^^^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed: quantity_positive
+[SQL: UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?]
+[parameters: (4, 1)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-09-18 12:21:58,930 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+ERROR:root:
+Traceback (most recent call last):
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: CHECK constraint failed: quantity_positive
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/babel-sg4Ps9/python-ObJFq6", line 241, in <module>
+    ship_it_atomic(2)
+    ~~~~~~~~~~~~~~^^^
+  File "/tmp/babel-sg4Ps9/python-ObJFq6", line 224, in ship_it_atomic
+    conn.execute(u)
+    ~~~~~~~~~~~~^^^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/sql/elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed: quantity_positive
+[SQL: UPDATE cookies SET quantity=(cookies.quantity - ?) WHERE cookies.cookie_id = ?]
+[parameters: (4, 1)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+#+end_example
+* Chapter 4: Testing
+#+BEGIN_SRC python :tangle db.py :shebang "#!/usr/bin/env python3" :results none
+  from datetime import datetime
+  from sqlalchemy import (
+      MetaData,
+      Table,
+      Column,
+      Integer,
+      Numeric,
+      String,
+      DateTime,
+      ForeignKey,
+      Boolean,
+      create_engine,
+  )
+  from sqlalchemy.sql import insert
+
+
+  class DataAccessLayer:
+      connection = None
+      engine = None
+      conn_string = None
+      metadata = MetaData()
+      cookies = Table(
+          "cookies",
+          metadata,
+          Column("cookie_id", Integer(), primary_key=True),
+          Column("cookie_name", String(50), index=True),
+          Column("cookie_recipe_url", String(255)),
+          Column("cookie_sku", String(55)),
+          Column("quantity", Integer()),
+          Column("unit_cost", Numeric(12, 2)),
+      )
+
+      users = Table(
+          "users",
+          metadata,
+          Column("user_id", Integer(), primary_key=True),
+          Column("customer_number", Integer(), autoincrement=True),
+          Column("username", String(15), nullable=False, unique=True),
+          Column("email_address", String(255), nullable=False),
+          Column("phone", String(20), nullable=False),
+          Column("password", String(25), nullable=False),
+          Column("created_on", DateTime(), default=datetime.now),
+          Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now),
+      )
+
+      orders = Table(
+          "orders",
+          metadata,
+          Column("order_id", Integer()),
+          Column("user_id", ForeignKey("users.user_id")),
+          Column("shipped", Boolean(), default=False),
+      )
+
+      line_items = Table(
+          "line_items",
+          metadata,
+          Column("line_items_id", Integer(), primary_key=True),
+          Column("order_id", ForeignKey("orders.order_id")),
+          Column("cookie_id", ForeignKey("cookies.cookie_id")),
+          Column("quantity", Integer()),
+          Column("extended_cost", Numeric(12, 2)),
+      )
+
+      def db_init(self, conn_string):
+          self.engine = create_engine(conn_string or self.conn_string)
+          self.metadata.create_all(self.engine)
+          self.connection = self.engine.connect()
+
+
+  dal = DataAccessLayer()
+
+
+  def prep_db():
+      ins = dal.cookies.insert()
+      dal.connection.execute(
+          ins,
+          dict(
+              cookie_name="dark chocolate chip",
+              cookie_recipe_url="http://some.aweso.me/cookie/recipe_dark.html",
+              cookie_sku="CC02",
+              quantity="1",
+              unit_cost="0.75",
+          ),
+      )
+      inventory_list = [
+          {
+              "cookie_name": "peanut butter",
+              "cookie_recipe_url": "http://some.aweso.me/cookie/peanut.html",
+              "cookie_sku": "PB01",
+              "quantity": "24",
+              "unit_cost": "0.25",
+          },
+          {
+              "cookie_name": "oatmeal raisin",
+              "cookie_recipe_url": "http://some.okay.me/cookie/raisin.html",
+              "cookie_sku": "EWW01",
+              "quantity": "100",
+              "unit_cost": "1.00",
+          },
+      ]
+      dal.connection.execute(ins, inventory_list)
+
+      customer_list = [
+          {
+              "username": "cookiemon",
+              "email_address": "mon@cookie.com",
+              "phone": "111-111-1111",
+              "password": "password",
+          },
+          {
+              "username": "cakeeater",
+              "email_address": "cakeeater@cake.com",
+              "phone": "222-222-2222",
+              "password": "password",
+          },
+          {
+              "username": "pieguy",
+              "email_address": "guy@pie.com",
+              "phone": "333-333-3333",
+              "password": "password",
+          },
+      ]
+      ins = dal.users.insert()
+      dal.connection.execute(ins, customer_list)
+      ins = insert(dal.orders).values(user_id=1, order_id="wlk001")
+      dal.connection.execute(ins)
+      ins = insert(dal.line_items)
+      order_items = [
+          {"order_id": "wlk001", "cookie_id": 1, "quantity": 2, "extended_cost": 1.00},
+          {"order_id": "wlk001", "cookie_id": 3, "quantity": 12, "extended_cost": 3.00},
+      ]
+      dal.connection.execute(ins, order_items)
+      ins = insert(dal.orders).values(user_id=2, order_id="ol001")
+      dal.connection.execute(ins)
+      ins = insert(dal.line_items)
+      order_items = [
+          {"order_id": "ol001", "cookie_id": 1, "quantity": 24, "extended_cost": 12.00},
+          {"order_id": "ol001", "cookie_id": 4, "quantity": 6, "extended_cost": 6.00},
+      ]
+      dal.connection.execute(ins, order_items)
+#+END_SRC
+
+#+BEGIN_SRC python :tangle app.py :results none :shebang "#!/usr/bin/env python3"
+  from db import dal
+  from sqlalchemy.sql import select
+
+
+  def get_orders_by_customer(
+      cust_name: str, shipped: bool | None = None, details: bool = False
+  ):
+      columns = [dal.orders.c.order_id, dal.users.c.username, dal.users.c.phone]
+      joins = dal.users.join(dal.orders)
+      if details:
+          columns.extend(
+              [
+                  dal.cookies.c.cookie_name,
+                  dal.line_items.c.quantity,
+                  dal.line_items.c.extended_cost,
+              ]
+          )
+          joins = joins.join(dal.line_items).join(dal.cookies)
+      cust_orders = select(*columns)
+      cust_orders = cust_orders.select_from(joins).where(
+          dal.users.c.username == cust_name
+      )
+      if shipped is not None:
+          cust_orders = cust_orders.where(dal.orders.c.shipped == shipped)
+      return dal.connection.execute(cust_orders).fetchall()
+#+END_SRC
+*** UnitTest
+#+BEGIN_SRC python :tangle test_app.py
+  import unittest
+  from decimal import Decimal
+
+  from app import get_orders_by_customer
+  from db import dal, prep_db
+
+
+  class TestApp(unittest.TestCase):
+      cookie_orders = [("wlk001", "cookiemon", "111-111-1111")]
+      cookie_details = [
+          (
+              "wlk001",
+              "cookiemon",
+              "111-111-1111",
+              "dark chocolate chip",
+              2,
+              Decimal("1.00"),
+          ),
+          ("wlk001", "cookiemon", "111-111-1111", "oatmeal raisin", 12, Decimal("3.00")),
+      ]
+
+      @classmethod
+      def setUpClass(cls):
+          dal.db_init("sqlite:///:memory:")
+          prep_db()
+
+      def test_orders_by_customer_blank(self):
+          """
+          - значение cust_name пустая строка,
+          - shipped = None
+          """
+          results = get_orders_by_customer("")
+          self.assertEqual(results, [])
+
+      def test_orders_by_customer_blank_shipped(self):
+          """
+          - значение cust_name пустая строка,
+          - shipped = True
+          """
+          results = get_orders_by_customer("", True)
+          self.assertEqual(results, [])
+
+      def test_orders_by_customer_blank_notshipped(self):
+          """
+          - значение cust_name пустая строка,
+          - shipped = False
+          """
+          results = get_orders_by_customer("", False)
+          self.assertEqual(results, [])
+
+      def test_orders_by_customer_blank_details(self):
+          results = get_orders_by_customer("", details=True)
+          self.assertEqual(results, [])
+
+      def test_orders_by_customer_blank_shipped_details(self):
+          results = get_orders_by_customer("", True, True)
+          self.assertEqual(results, [])
+
+      def test_orders_by_customer_blank_notshipped_details(self):
+          results = get_orders_by_customer("", False, True)
+          self.assertEqual(results, [])
+
+      def test_orders_by_customer(self):
+          expected_results = [("wlk001", "cookiemon", "111-111-1111")]
+          results = get_orders_by_customer("cookiemon")
+          self.assertEqual(results, expected_results)
+
+      def test_orders_by_customer_shipped_only(self):
+          results = get_orders_by_customer("cookiemon", True)
+          self.assertEqual(results, [])
+
+      def test_orders_by_customer_unshipped_only(self):
+          expected_results = [("wlk001", "cookiemon", "111-111-1111")]
+          results = get_orders_by_customer("cookiemon", False)
+          self.assertEqual(results, expected_results)
+
+      def test_orders_by_customer_with_details(self):
+          expected_results = [
+              (
+                  "wlk001",
+                  "cookiemon",
+                  "111-111-1111",
+                  "dark chocolate chip",
+                  2,
+                  Decimal("1.00"),
+              ),
+              (
+                  "wlk001",
+                  "cookiemon",
+                  "111-111-1111",
+                  "oatmeal raisin",
+                  12,
+                  Decimal("3.00"),
+              ),
+          ]
+          results = get_orders_by_customer("cookiemon", details=True)
+          self.assertEqual(results, expected_results)
+
+      def test_orders_by_customer_shipped_only_with_details(self):
+          results = get_orders_by_customer("cookiemon", True, True)
+          self.assertEqual(results, [])
+
+      def test_orders_by_customer_unshipped_only_details(self):
+          expected_results = [
+              (
+                  "wlk001",
+                  "cookiemon",
+                  "111-111-1111",
+                  "dark chocolate chip",
+                  2,
+                  Decimal("1.00"),
+              ),
+              (
+                  "wlk001",
+                  "cookiemon",
+                  "111-111-1111",
+                  "oatmeal raisin",
+                  12,
+                  Decimal("3.00"),
+              ),
+          ]
+          results = get_orders_by_customer("cookiemon", False, True)
+          self.assertEqual(results, expected_results)
+#+END_SRC
+#+BEGIN_SRC python :tangle test_app_mocked.py :results none
+  import unittest
+  from decimal import Decimal
+  from unittest import mock
+
+  from app import get_orders_by_customer
+  from db import dal, prep_db
+
+
+  class TestApp(unittest.TestCase):
+      cookie_orders = [("wlk001", "cookiemon", "111-111-1111")]
+      cookie_details = [
+          (
+              "wlk001",
+              "cookiemon",
+              "111-111-1111",
+              "dark chocolate chip",
+              2,
+              Decimal("1.00"),
+          ),
+          ("wlk001", "cookiemon", "111-111-1111", "oatmeal raisin", 12, Decimal("3.00")),
+      ]
+
+      @mock.patch("app.select")
+      @mock.patch("app.dal.connection")
+      def test_orders_by_customer_blank(self, mock_conn, mock_select):
+          mock_select.return_value.select_from.return_value.where.return_value = None
+          mock_conn.execute.return_value.fetchall.return_value = []
+          results = get_orders_by_customer("")
+          self.assertEqual(results, [])
+
+      @mock.patch("app.dal.connection")
+      def test_orders_by_customer_blank_shipped(self, mock_conn):
+          mock_conn.execute.return_value.fetchall.return_value = []
+          results = get_orders_by_customer("", True)
+          self.assertEqual(results, [])
+
+      @mock.patch("app.dal.connection")
+      def test_orders_by_customer(self, mock_conn):
+          mock_conn.execute.return_value.fetchall.return_value = self.cookie_orders
+          results = get_orders_by_customer("cookiemon")
+          self.assertEqual(results, self.cookie_orders)
+#+END_SRC
+
+*** pytest
+#+BEGIN_SRC python :tangle test_app_pytest.py :results none
+  from decimal import Decimal
+
+  import pytest
+
+  from app import get_orders_by_customer
+  from db import dal, prep_db
+
+
+  @pytest.fixture(autouse=True, scope="class")
+  def setup_db():
+      dal.db_init("sqlite:///:memory:")
+      prep_db()
+      yield
+      # здесь можно закрыть соединение, если нужно:
+      # dal.connection.close()
+
+
+  def test_orders_by_customer_blank():
+      """
+      - значение cust_name пустая строка,
+      - shipped = None
+      """
+      results = get_orders_by_customer("")
+      assert results == []
+
+
+  def test_orders_by_customer_blank_shipped():
+      """
+      - значение cust_name пустая строка,
+      - shipped = True
+      """
+      results = get_orders_by_customer("", True)
+      assert results == []
+
+
+  def test_orders_by_customer_blank_notshipped():
+      """
+      - значение cust_name пустая строка,
+      - shipped = False
+      """
+      results = get_orders_by_customer("", False)
+      assert results == []
+
+
+  def test_orders_by_customer_blank_details():
+      results = get_orders_by_customer("", details=True)
+      assert results == []
+
+
+  def test_orders_by_customer_blank_shipped_details():
+      results = get_orders_by_customer("", True, True)
+      assert results == []
+
+
+  def test_orders_by_customer_blank_notshipped_details():
+      results = get_orders_by_customer("", False, True)
+      assert results == []
+
+
+  def test_orders_by_customer():
+      expected_results = [("wlk001", "cookiemon", "111-111-1111")]
+      results = get_orders_by_customer("cookiemon")
+      assert results == expected_results
+
+
+  def test_orders_by_customer_shipped_only():
+      results = get_orders_by_customer("cookiemon", True)
+      assert results == []
+
+
+  def test_orders_by_customer_unshipped_only():
+      expected_results = [("wlk001", "cookiemon", "111-111-1111")]
+      results = get_orders_by_customer("cookiemon", False)
+      assert results == expected_results
+
+
+  def test_orders_by_customer_with_details():
+      expected_results = [
+          (
+              "wlk001",
+              "cookiemon",
+              "111-111-1111",
+              "dark chocolate chip",
+              2,
+              Decimal("1.00"),
+          ),
+          (
+              "wlk001",
+              "cookiemon",
+              "111-111-1111",
+              "oatmeal raisin",
+              12,
+              Decimal("3.00"),
+          ),
+      ]
+      results = get_orders_by_customer("cookiemon", details=True)
+      assert results == expected_results
+
+
+  def test_orders_by_customer_shipped_only_with_details():
+      results = get_orders_by_customer("cookiemon", True, True)
+      assert results == []
+
+
+  def test_orders_by_customer_unshipped_only_details():
+      expected_results = [
+          (
+              "wlk001",
+              "cookiemon",
+              "111-111-1111",
+              "dark chocolate chip",
+              2,
+              Decimal("1.00"),
+          ),
+          (
+              "wlk001",
+              "cookiemon",
+              "111-111-1111",
+              "oatmeal raisin",
+              12,
+              Decimal("3.00"),
+          ),
+      ]
+      results = get_orders_by_customer("cookiemon", False, True)
+      assert results == expected_results
+#+END_SRC
+
+#+BEGIN_SRC python :tangle test_app_mocked_pytest.py :results none
+  from decimal import Decimal
+  from unittest import mock
+
+  import pytest
+
+  from app import get_orders_by_customer
+  from db import dal, prep_db
+
+
+  # --- общие тестовые данные ---
+
+  @pytest.fixture
+  def cookie_orders():
+      return [("wlk001", "cookiemon", "111-111-1111")]
+
+
+  @pytest.fixture
+  def cookie_details():
+      return [
+          (
+              "wlk001",
+              "cookiemon",
+              "111-111-1111",
+              "dark chocolate chip",
+              2,
+              Decimal("1.00"),
+          ),
+          ("wlk001", "cookiemon", "111-111-1111", "oatmeal raisin", 12, Decimal("3.00")),
+      ]
+
+
+  # --- тесты ---
+
+  @mock.patch("app.select")
+  @mock.patch("app.dal.connection")
+  def test_orders_by_customer_blank(mock_conn, mock_select):
+      mock_select.return_value.select_from.return_value.where.return_value = None
+      mock_conn.execute.return_value.fetchall.return_value = []
+
+      results = get_orders_by_customer("")
+
+      assert results == []
+
+
+  @mock.patch("app.dal.connection")
+  def test_orders_by_customer_blank_shipped(mock_conn):
+      mock_conn.execute.return_value.fetchall.return_value = []
+
+      results = get_orders_by_customer("", True)
+
+      assert results == []
+
+
+  @mock.patch("app.dal.connection")
+  def test_orders_by_customer(mock_conn, cookie_orders):
+      mock_conn.execute.return_value.fetchall.return_value = cookie_orders
+
+      results = get_orders_by_customer("cookiemon")
+
+      assert results == cookie_orders
+#+END_SRC

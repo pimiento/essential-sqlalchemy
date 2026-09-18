@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.20.0",
+    "pytest>=9.1.1",
+    "pytest-randomly>=5.0.0",
     "sqlalchemy>=2.0.52",
     "sqlparse>=0.6.0",
 ]
