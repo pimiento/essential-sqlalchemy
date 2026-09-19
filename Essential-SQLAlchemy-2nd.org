@@ -1,3 +1,7 @@
+#+OPTIONS: H:3 num:t toc:t \n:nil @:t ::t |:t ^:{} _:{} -:t f:t *:t <:t todo:t
+#+KEYWORDS: sqlalchemy alembic orm
+#+TITLE: Essential SQLAlchemy (v1/v2)
+
 * Chapter 1: Schema and Types
 
 ** SQLAlchemy v1
@@ -3250,6 +3254,7 @@ sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed:
 :header-args:python: :session *ch6* :tangle ch6-v1.py
 :header-args: :cache yes
 :END:
+#+NAME: MyBase
 #+BEGIN_SRC python :shebang "#!/usr/bin/env python3" :results value
   import re
   import logging
@@ -3274,6 +3279,14 @@ sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed:
           except Exception:
               logging.exception(raw)
 
+      def __repr__(self) -> str:
+          raw = f"{self.__class__.__name__}"
+          columns = ','.join(
+              f"{column.name}='{getattr(self, column.name)}'"
+              for column in self.__table__.columns
+          )
+          return format_string(raw + '(' + columns + ')')
+
 
   class Cookie(Base, MyBase):
       __tablename__ = "cookies"
@@ -3288,6 +3301,27 @@ sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed:
 
   Cookie.display()
 #+END_SRC
+
+#+RESULTS[63344a5dd32b5f4e56ae44c95a63cb48302045d9]: MyBase
+#+begin_example
+Table(
+    "cookies",
+    MetaData(),
+    Column(
+        "cookie_id",
+        Integer(),
+        table="cookies",
+        primary_key=True,
+        nullable=False,
+    ),
+    Column("cookie_name", String(length=50), table="cookies"),
+    Column("cookie_recipe_url", String(length=255), table="cookies"),
+    Column("cookie_sku", String(length=55), table="cookies"),
+    Column("quantity", Integer(), table="cookies"),
+    Column("unit_cost", Numeric(precision=12, scale=2), table="cookies"),
+    schema=None,
+)
+#+end_example
 
 #+RESULTS[5b56178ce5c3f4569e8a6b504d2403a6cd89b6d2]:
 #+begin_example
@@ -3310,7 +3344,7 @@ Table(
 )
 #+end_example
 
-
+#+NAME: User
 #+BEGIN_SRC python :results value
   from datetime import datetime
   from sqlalchemy import DateTime
@@ -3328,6 +3362,24 @@ Table(
 
   User.display()
 #+END_SRC
+
+#+RESULTS[db2e3edeb658ed84112fb4858bd9142a46eff7d6]: User
+#+begin_example
+Table(
+    "users",
+    MetaData(),
+    Column(
+        "user_id", Integer(), table="users", primary_key=True, nullable=False
+    ),
+    Column("username", String(length=12), table="users", nullable=False),
+    Column("email_address", String(length=255), table="users", nullable=False),
+    Column("phone", String(length=20), table="users", nullable=False),
+    Column("password", String(length=25), table="users", nullable=False),
+    Column("created_on", DateTime(), table="users", default=NOW),
+    Column("updated_on", DateTime(), table="users", onupdate=NOW, default=NOW),
+    schema=None,
+)
+#+end_example
 
 #+RESULTS[e9cc339461880657ed2388d4bc3210231a6ab18f]:
 #+begin_example
@@ -3358,6 +3410,7 @@ Table(
 #+END_SRC
 
 *** Relationships
+#+NAME: Order
 #+BEGIN_SRC python :results value
   from sqlalchemy import ForeignKey, Boolean
   from sqlalchemy.orm import relationship, backref
@@ -3375,6 +3428,25 @@ Table(
 
   Order.display()
 #+END_SRC
+
+#+RESULTS[21befa1cb4486a7e5bf8ba1e27be4391e00e421d]: Order
+#+begin_example
+Table(
+    "orders",
+    MetaData(),
+    Column(
+        "order_id", Integer(), table="orders", primary_key=True, nullable=False
+    ),
+    Column("user_id", Integer(), ForeignKey("users.user_id"), table="orders"),
+    Column(
+        "shipped",
+        Boolean(),
+        table="orders",
+        default=ScalarElementColumnDefault(False),
+    ),
+    schema=None,
+)
+#+end_example
 
 #+RESULTS[081b1bbdd2e372705d12cca3f6c0adc1f5c73652]:
 #+begin_example
@@ -3396,6 +3468,7 @@ Table(
 #+end_example
 
 One-to-One
+#+NAME: LineItem
 #+BEGIN_SRC python :results value
   class LineItem(Base, MyBase):
       __tablename__ = "line_items"
@@ -3410,6 +3483,33 @@ One-to-One
 
   LineItem.display()
 #+END_SRC
+
+#+RESULTS[3f8b1b824259f4d103c9cd13043211def58ffb1b]: LineItem
+#+begin_example
+Table(
+    "line_items",
+    MetaData(),
+    Column(
+        "line_item_id",
+        Integer(),
+        table="line_items",
+        primary_key=True,
+        nullable=False,
+    ),
+    Column(
+        "order_id", Integer(), ForeignKey("orders.order_id"), table="line_items"
+    ),
+    Column(
+        "cookie_id",
+        Integer(),
+        ForeignKey("cookies.cookie_id"),
+        table="line_items",
+    ),
+    Column("quantity", Integer(), table="line_items"),
+    Column("extended_cost", Numeric(precision=12, scale=2), table="line_items"),
+    schema=None,
+)
+#+end_example
 
 #+RESULTS[0a7fb3d313c7117a29787471715c6b37d8820c1b]:
 #+begin_example
@@ -3442,7 +3542,7 @@ Table(
   Order.display()
 #+END_SRC
 
-#+RESULTS[75aad6fe29bd5403e2810c4b62e4667147e65e8f]:
+#+RESULTS[732b625ca2ad9f696a0d2523c63a0eabb8442746]:
 #+begin_example
 Table(
     "orders",
@@ -3556,7 +3656,6 @@ Table(
     schema=None,
 )
 #+end_example
-
 
 #+BEGIN_SRC python :results value
   class User(Base, MyBase):
@@ -3750,3 +3849,147 @@ Table(
       for cookie in session.scalars(stmt):
           print(cookie.cookie_name, cookie.unit_cost)
 #+END_SRC
+
+* Chapter 7: Working with Data via SQLAlchemy ORM
+** SQLAlchemy v1
+:PROPERTIES:
+:header-args:python: :session *ch7-v1* :tangle ch7-v1.py :cache no
+:END:
+
+#+BEGIN_SRC python :shebang "#!/usr/bin/env python3" :results none
+  from sqlalchemy import create_engine
+  from sqlalchemy.orm import sessionmaker
+
+  engine = create_engine("sqlite:///:memory:")
+  Session = sessionmaker(bind=engine)
+  session = Session()
+#+END_SRC
+
+#+BEGIN_SRC python :noweb yes :results none
+  <<MyBase>>
+  <<User>>
+  <<Order>>
+  <<LineItem>>
+
+  Base.metadata.create_all(engine)
+#+END_SRC
+
+*** Inserting Data
+#+BEGIN_SRC python :results value
+  cc_cookie = Cookie(
+      cookie_name="chocolate chip",
+      cookie_recipe_url="http://some.aweso.me/cookie/recipe.html",
+      cookie_sku="CC01",
+      quantity="12",
+      unit_cost=0.50,
+  )
+  session.add(cc_cookie)
+  session.commit()
+  cc_cookie.cookie_id
+#+END_SRC
+
+#+RESULTS[fa45196de486c5a00bb1fa04a705a018d97b5d10]:
+: 1
+
+#+BEGIN_SRC python :results table
+  dcc = Cookie(
+      cookie_name="dark chocolate chip",
+      cookie_recipe_url="http://some.aweso.me/cookie/recipe/recipe_dark.html",
+      cookie_sku="CC02",
+      quantity=1,
+      unit_cost=0.75,
+  )
+  mol = Cookie(
+      cookie_name="molasses",
+      cookie_recipe_url="http://some.aweso.me/cookie/recipe_molasses.html",
+      cookie_sku="MOL01",
+      quantity=1,
+      unit_cost=0.80,
+  )
+  session.add(dcc)
+  session.add(mol)
+  session.flush()
+  [('dcc.cookie_id', dcc.cookie_id), ('mol.cookie_id', mol.cookie_id)]
+#+END_SRC
+
+#+RESULTS[aa0782cad77f967ed3d7b03a7663a751a40fb13a]:
+| dcc.cookie_id | 2 |
+| mol.cookie_id | 3 |
+
+#+BEGIN_SRC python :results value
+  c1 = Cookie(
+      cookie_name="peanut butter",
+      cookie_recipe_url="http://some.aweso.me/cookie/recipe/peanut.html",
+      cookie_sku="PB01",
+      quantity=24,
+      unit_cost=0.25,
+  )
+  c2 = Cookie(
+      cookie_name="oatmeal raisin",
+      cookie_recipe_url="http://some.okay.me/cookie/raisin.html",
+      cookie_sku="EWW01",
+      quantity=100,
+      unit_cost=1.00,
+  )
+  session.bulk_save_objects([c1, c2])
+  session.commit()
+  # Тут будет None, так как для скорости делается только вставка данных,
+  # обратно ничего не запрашивается и поэтому не добавляется в объекты
+  c1.cookie_id
+#+END_SRC
+
+#+RESULTS[e11874041529f487587ec35f050a931b343524f2]:
+: None
+
+*** Querying Data
+#+BEGIN_SRC python :results output
+  cookies = session.query(Cookie).all()
+  print(cookies)
+#+END_SRC
+
+#+RESULTS[99729b5a2d9065a18497e132f4867082d30d1227]:
+#+begin_example
+[Cookie(
+    cookie_id="1",
+    cookie_name="chocolate chip",
+    cookie_recipe_url="http://some.aweso.me/cookie/recipe.html",
+    cookie_sku="CC01",
+    quantity="12",
+    unit_cost="0.50",
+)
+, Cookie(
+    cookie_id="2",
+    cookie_name="dark chocolate chip",
+    cookie_recipe_url="http://some.aweso.me/cookie/recipe/recipe_dark.html",
+    cookie_sku="CC02",
+    quantity="1",
+    unit_cost="0.75",
+)
+, Cookie(
+    cookie_id="3",
+    cookie_name="molasses",
+    cookie_recipe_url="http://some.aweso.me/cookie/recipe_molasses.html",
+    cookie_sku="MOL01",
+    quantity="1",
+    unit_cost="0.80",
+)
+, Cookie(
+    cookie_id="4",
+    cookie_name="peanut butter",
+    cookie_recipe_url="http://some.aweso.me/cookie/recipe/peanut.html",
+    cookie_sku="PB01",
+    quantity="24",
+    unit_cost="0.25",
+)
+, Cookie(
+    cookie_id="5",
+    cookie_name="oatmeal raisin",
+    cookie_recipe_url="http://some.okay.me/cookie/raisin.html",
+    cookie_sku="EWW01",
+    quantity="100",
+    unit_cost="1.00",
+)
+]
+#+end_example
+
+
