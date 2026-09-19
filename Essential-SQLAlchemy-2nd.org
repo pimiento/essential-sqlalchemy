@@ -3243,3 +3243,510 @@ sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed:
 
 #+RESULTS:
 | Artist | Album | Customer | Employee | Genre | Invoice | InvoiceLine | Track | MediaType | Playlist | PlaylistTrack |
+
+* Chapter 6: Defining Schema with SQLAlchemy ORM
+** SQLAlchemy v1
+:PROPERTIES:
+:header-args:python: :session *ch6* :tangle ch6-v1.py
+:header-args: :cache yes
+:END:
+#+BEGIN_SRC python :shebang "#!/usr/bin/env python3" :results value
+  import re
+  import logging
+  from ruff_format import format_string
+  from sqlalchemy import Table, Column, Integer, Numeric, String
+  from sqlalchemy.ext.declarative import declarative_base
+
+  Base = declarative_base()
+
+
+  class MyBase:
+      @classmethod
+      def display(cls: Base) -> str:
+          raw = repr(cls.__table__).replace(f"<{cls.__tablename__}>", f'"{cls.__tablename__}"')
+          raw = re.sub(
+              r"CallableColumnDefault\(<function datetime\.now at 0x[0-9a-f]+>\)",
+              "NOW",
+              raw,
+          )
+          try:
+              return format_string(raw)
+          except Exception:
+              logging.exception(raw)
+
+
+  class Cookie(Base, MyBase):
+      __tablename__ = "cookies"
+
+      cookie_id = Column(Integer(), primary_key=True)
+      cookie_name = Column(String(50), index=True)
+      cookie_recipe_url = Column(String(255))
+      cookie_sku = Column(String(55))
+      quantity = Column(Integer())
+      unit_cost = Column(Numeric(12, 2))
+
+
+  Cookie.display()
+#+END_SRC
+
+#+RESULTS[5b56178ce5c3f4569e8a6b504d2403a6cd89b6d2]:
+#+begin_example
+Table(
+    "cookies",
+    MetaData(),
+    Column(
+        "cookie_id",
+        Integer(),
+        table="cookies",
+        primary_key=True,
+        nullable=False,
+    ),
+    Column("cookie_name", String(length=50), table="cookies"),
+    Column("cookie_recipe_url", String(length=255), table="cookies"),
+    Column("cookie_sku", String(length=55), table="cookies"),
+    Column("quantity", Integer(), table="cookies"),
+    Column("unit_cost", Numeric(precision=12, scale=2), table="cookies"),
+    schema=None,
+)
+#+end_example
+
+
+#+BEGIN_SRC python :results value
+  from datetime import datetime
+  from sqlalchemy import DateTime
+
+  class User(Base, MyBase):
+      __tablename__ = "users"
+
+      user_id = Column(Integer(), primary_key=True)
+      username = Column(String(12), nullable=False, unique=True)
+      email_address = Column(String(255), nullable=False)
+      phone = Column(String(20), nullable=False)
+      password = Column(String(25), nullable=False)
+      created_on = Column(DateTime(), default=datetime.now)
+      updated_on = Column(DateTime(), default=datetime.now, onupdate=datetime.now)
+
+  User.display()
+#+END_SRC
+
+#+RESULTS[e9cc339461880657ed2388d4bc3210231a6ab18f]:
+#+begin_example
+Table(
+    "users",
+    MetaData(),
+    Column(
+        "user_id", Integer(), table="users", primary_key=True, nullable=False
+    ),
+    Column("username", String(length=12), table="users", nullable=False),
+    Column("email_address", String(length=255), table="users", nullable=False),
+    Column("phone", String(length=20), table="users", nullable=False),
+    Column("password", String(length=25), table="users", nullable=False),
+    Column("created_on", DateTime(), table="users", default=NOW),
+    Column("updated_on", DateTime(), table="users", onupdate=NOW, default=NOW),
+    schema=None,
+)
+#+end_example
+
+*** Keys, Constraints, and Indexes
+#+BEGIN_SRC python :results none  :tangle no
+  class SomeDataClass(Base):
+      __tablename__ = "somedataclass"
+      __table_args__ = (
+          ForeignKeyConstraint("id", "other_table.id"),
+          CheckConstraint("unit_cost >= 0.00", name="unit_cost_positive"),
+      )
+#+END_SRC
+
+*** Relationships
+#+BEGIN_SRC python :results value
+  from sqlalchemy import ForeignKey, Boolean
+  from sqlalchemy.orm import relationship, backref
+
+
+  class Order(Base, MyBase):
+      __tablename__ = "orders"
+
+      order_id = Column(Integer(), primary_key=True)
+      user_id = Column(Integer(), ForeignKey("users.user_id"))
+      shipped = Column(Boolean(), default=False)
+
+      user = relationship("User", backref=backref("orders", order_by=order_id))
+
+
+  Order.display()
+#+END_SRC
+
+#+RESULTS[081b1bbdd2e372705d12cca3f6c0adc1f5c73652]:
+#+begin_example
+Table(
+    "orders",
+    MetaData(),
+    Column(
+        "order_id", Integer(), table="orders", primary_key=True, nullable=False
+    ),
+    Column("user_id", Integer(), ForeignKey("users.user_id"), table="orders"),
+    Column(
+        "shipped",
+        Boolean(),
+        table="orders",
+        default=ScalarElementColumnDefault(False),
+    ),
+    schema=None,
+)
+#+end_example
+
+One-to-One
+#+BEGIN_SRC python :results value
+  class LineItem(Base, MyBase):
+      __tablename__ = "line_items"
+
+      line_item_id = Column(Integer(), primary_key=True)
+      order_id = Column(Integer(), ForeignKey("orders.order_id"))
+      cookie_id = Column(Integer(), ForeignKey("cookies.cookie_id"))
+      quantity = Column(Integer())
+      extended_cost = Column(Numeric(12, 2))
+      order = relationship("Order", backref=backref("line_items", order_by=line_item_id))
+      cookie = relationship("Cookie", uselist=False)
+
+  LineItem.display()
+#+END_SRC
+
+#+RESULTS[0a7fb3d313c7117a29787471715c6b37d8820c1b]:
+#+begin_example
+Table(
+    "line_items",
+    MetaData(),
+    Column(
+        "line_item_id",
+        Integer(),
+        table="line_items",
+        primary_key=True,
+        nullable=False,
+    ),
+    Column(
+        "order_id", Integer(), ForeignKey("orders.order_id"), table="line_items"
+    ),
+    Column(
+        "cookie_id",
+        Integer(),
+        ForeignKey("cookies.cookie_id"),
+        table="line_items",
+    ),
+    Column("quantity", Integer(), table="line_items"),
+    Column("extended_cost", Numeric(precision=12, scale=2), table="line_items"),
+    schema=None,
+)
+#+end_example
+
+#+BEGIN_SRC python :results value
+  Order.display()
+#+END_SRC
+
+#+RESULTS[75aad6fe29bd5403e2810c4b62e4667147e65e8f]:
+#+begin_example
+Table(
+    "orders",
+    MetaData(),
+    Column(
+        "order_id", Integer(), table="orders", primary_key=True, nullable=False
+    ),
+    Column("user_id", Integer(), ForeignKey("users.user_id"), table="orders"),
+    Column(
+        "shipped",
+        Boolean(),
+        table="orders",
+        default=ScalarElementColumnDefault(False),
+    ),
+    schema=None,
+)
+#+end_example
+
+#+BEGIN_SRC python :results none
+  from sqlalchemy import create_engine
+  engine = create_engine("sqlite:///:memory:")
+
+  Base.metadata.create_all(engine)
+#+END_SRC
+
+** SQLAlchemy v2
+:PROPERTIES:
+:header-args:python: :session *ch6-v2* :tangle ch6-v2.py :cache yes
+:END:
+#+BEGIN_SRC python :shebang "#!/usr/bin/env python3" :results value
+  import re
+  import logging
+  from datetime import datetime
+  from decimal import Decimal
+
+  from ruff_format import format_string
+  from sqlalchemy import (
+      Boolean,
+      DateTime,
+      ForeignKey,
+      Integer,
+      Numeric,
+      String,
+      create_engine,
+      select,
+  )
+  from sqlalchemy.orm import (
+      DeclarativeBase,
+      Mapped,
+      mapped_column,
+      relationship,
+      Session,
+  )
+
+
+  class Base(DeclarativeBase):
+      """Базовый класс для всех декларативных моделей."""
+
+
+  class MyBase:
+      """Миксин для красивого отображения таблицы."""
+
+      @classmethod
+      def display(cls) -> str:
+          raw = repr(cls.__table__).replace(
+              f"<{cls.__tablename__}>", f'"{cls.__tablename__}"'
+          )
+          raw = re.sub(
+              r"CallableColumnDefault\(<function datetime\.now at 0x[0-9a-f]+>\)",
+              "NOW",
+              raw,
+          )
+          try:
+              return format_string(raw)
+          except Exception:
+              logging.exception(raw)
+              return raw
+
+
+  class Cookie(Base, MyBase):
+      __tablename__ = "cookies"
+
+      cookie_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      cookie_name: Mapped[str | None] = mapped_column(String(50), index=True)
+      cookie_recipe_url: Mapped[str | None] = mapped_column(String(255))
+      cookie_sku: Mapped[str | None] = mapped_column(String(55))
+      quantity: Mapped[int | None] = mapped_column(Integer)
+      unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+
+
+  Cookie.display()
+#+END_SRC
+
+#+RESULTS[f185c05d802c49b3e988a951968bc5555eb88c57]:
+#+begin_example
+Table(
+    "cookies",
+    MetaData(),
+    Column(
+        "cookie_id",
+        Integer(),
+        table="cookies",
+        primary_key=True,
+        nullable=False,
+    ),
+    Column("cookie_name", String(length=50), table="cookies"),
+    Column("cookie_recipe_url", String(length=255), table="cookies"),
+    Column("cookie_sku", String(length=55), table="cookies"),
+    Column("quantity", Integer(), table="cookies"),
+    Column("unit_cost", Numeric(precision=12, scale=2), table="cookies"),
+    schema=None,
+)
+#+end_example
+
+
+#+BEGIN_SRC python :results value
+  class User(Base, MyBase):
+      __tablename__ = "users"
+
+      user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      username: Mapped[str] = mapped_column(String(12), nullable=False, unique=True)
+      email_address: Mapped[str] = mapped_column(String(255), nullable=False)
+      phone: Mapped[str] = mapped_column(String(20), nullable=False)
+      password: Mapped[str] = mapped_column(String(25), nullable=False)
+      created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+      updated_on: Mapped[datetime] = mapped_column(
+          DateTime, default=datetime.now, onupdate=datetime.now
+      )
+
+      orders: Mapped[list["Order"]] = relationship(
+          back_populates="user", order_by="Order.order_id"
+      )
+
+
+  User.display()
+#+END_SRC
+
+#+RESULTS[d8d31f6b8ede872fe62231ee9e4f9380c2455209]:
+#+begin_example
+Table(
+    "users",
+    MetaData(),
+    Column(
+        "user_id", Integer(), table="users", primary_key=True, nullable=False
+    ),
+    Column("username", String(length=12), table="users", nullable=False),
+    Column("email_address", String(length=255), table="users", nullable=False),
+    Column("phone", String(length=20), table="users", nullable=False),
+    Column("password", String(length=25), table="users", nullable=False),
+    Column(
+        "created_on", DateTime(), table="users", nullable=False, default=NOW
+    ),
+    Column(
+        "updated_on",
+        DateTime(),
+        table="users",
+        nullable=False,
+        onupdate=NOW,
+        default=NOW,
+    ),
+    schema=None,
+)
+#+end_example
+
+*** Keys, Constraints, and Indexes
+#+BEGIN_SRC python :results none :tangle no
+  from sqlalchemy import CheckConstraint, ForeignKeyConstraint
+
+
+  class SomeDataClass(Base):
+      __tablename__ = "somedataclass"
+      __table_args__ = (
+          ForeignKeyConstraint(["id"], ["other_table.id"]),
+          CheckConstraint("unit_cost >= 0.00", name="unit_cost_positive"),
+      )
+
+      id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+#+END_SRC
+
+*** Relationships
+#+BEGIN_SRC python :results value
+  class Order(Base, MyBase):
+      __tablename__ = "orders"
+
+      order_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      user_id: Mapped[int | None] = mapped_column(ForeignKey("users.user_id"))
+      shipped: Mapped[bool | None] = mapped_column(Boolean, default=False)
+
+      user: Mapped["User | None"] = relationship(back_populates="orders")
+      line_items: Mapped[list["LineItem"]] = relationship(
+          back_populates="order", order_by="LineItem.line_item_id"
+      )
+
+
+  Order.display()
+#+END_SRC
+
+#+RESULTS[6ece26db13e2cf39ae98338d93d50f5139ed05a0]:
+#+begin_example
+Table(
+    "orders",
+    MetaData(),
+    Column(
+        "order_id", Integer(), table="orders", primary_key=True, nullable=False
+    ),
+    Column("user_id", Integer(), ForeignKey("users.user_id"), table="orders"),
+    Column(
+        "shipped",
+        Boolean(),
+        table="orders",
+        default=ScalarElementColumnDefault(False),
+    ),
+    schema=None,
+)
+#+end_example
+
+One-to-One
+#+BEGIN_SRC python :results value
+  class LineItem(Base, MyBase):
+      __tablename__ = "line_items"
+
+      line_item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+      order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.order_id"))
+      cookie_id: Mapped[int | None] = mapped_column(ForeignKey("cookies.cookie_id"))
+      quantity: Mapped[int | None] = mapped_column(Integer)
+      extended_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+
+      order: Mapped["Order | None"] = relationship(back_populates="line_items")
+      cookie: Mapped["Cookie | None"] = relationship(uselist=False)
+
+
+  LineItem.display()
+#+END_SRC
+
+#+RESULTS[823e900242cca3c4999b00a1efc879ea28aa5060]:
+#+begin_example
+Table(
+    "line_items",
+    MetaData(),
+    Column(
+        "line_item_id",
+        Integer(),
+        table="line_items",
+        primary_key=True,
+        nullable=False,
+    ),
+    Column(
+        "order_id", Integer(), ForeignKey("orders.order_id"), table="line_items"
+    ),
+    Column(
+        "cookie_id",
+        Integer(),
+        ForeignKey("cookies.cookie_id"),
+        table="line_items",
+    ),
+    Column("quantity", Integer(), table="line_items"),
+    Column("extended_cost", Numeric(precision=12, scale=2), table="line_items"),
+    schema=None,
+)
+#+end_example
+
+#+BEGIN_SRC python :results value
+  Order.display()
+#+END_SRC
+
+#+RESULTS[ef90d3beef41c5187fbc5ee9f04a074da1fb310a]:
+#+begin_example
+Table(
+    "orders",
+    MetaData(),
+    Column(
+        "order_id", Integer(), table="orders", primary_key=True, nullable=False
+    ),
+    Column("user_id", Integer(), ForeignKey("users.user_id"), table="orders"),
+    Column(
+        "shipped",
+        Boolean(),
+        table="orders",
+        default=ScalarElementColumnDefault(False),
+    ),
+    schema=None,
+)
+#+end_example
+
+
+#+BEGIN_SRC python :results none
+  engine = create_engine("sqlite:///:memory:")
+
+  Base.metadata.create_all(engine)
+
+  with Session(engine) as session:
+      session.add(
+          Cookie(
+              cookie_name="chocolate chip",
+              cookie_recipe_url="http://some.aweso.me/cookie/recipe.html",
+              cookie_sku="CC01",
+              quantity=12,
+              unit_cost=Decimal("0.50"),
+          )
+      )
+      session.commit()
+
+      stmt = select(Cookie).where(Cookie.cookie_name == "chocolate chip")
+      for cookie in session.scalars(stmt):
+          print(cookie.cookie_name, cookie.unit_cost)
+#+END_SRC
