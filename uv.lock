@@ -171,6 +171,44 @@ wheels = [
 ]
 
 [[package]]
+name = "ruff-format"
+version = "0.5.4"
+source = { registry = "https://mirror.yandex.ru/pypi/web/simple/" }
+sdist = { url = "https://mirror.yandex.ru/pypi/web/packages/cc/cf/cbe87330d828016bacbe58ca148d941c378d5f9e42e40193b787819fc284/ruff_format-0.5.4.tar.gz", hash = "sha256:41b27536c12c4c3cf348be90dff06b864c8938211fabf13031559e34c755da41" }
+wheels = [
+    { url = "https://mirror.yandex.ru/pypi/web/packages/35/ba/1a2a451df7a0f2242413dab59a71cf8da283e2aad5687316352583f1e329/ruff_format-0.5.4-cp314-cp314t-macosx_10_12_x86_64.whl", hash = "sha256:22e8b8e775311262042d3207bba07181d997461c0bb221f354750de9f9e41004" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/1d/33/51662e0e980bbdb04a042552c9e20cff5cb31025255f5e831dc30d138e34/ruff_format-0.5.4-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:9b935b19dceb6f4d3a59f2ee365b65701fa36f0b6c48b8eab553d684a88293b5" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/f0/59/df26930c8daa8bb7a4ff6150b8da71e811b791089a7a7e2dfe3f4f49dd8d/ruff_format-0.5.4-cp314-cp314t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e3b46dcf3cee036ba3d9da86ccbaf8cf3d72cd1ad97124ed052dc90b965bb5c1" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/33/59/05f9d67840be653f9bead8eadb437c1e5b3ca614875bdf07980afc3dcf81/ruff_format-0.5.4-cp314-cp314t-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:f5340f0f355834168ce28fe1c63450373e0178846eb52f134fdc9719210f4fb6" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/6f/41/300ed8c9abdf5a5500b5add22ac4648f60c598ac4db952e3b8630ca945ff/ruff_format-0.5.4-cp314-cp314t-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:df02cfa4f9838812a06f2c427ee24d91c6553bc567e4e94d9e51635a89e9acf1" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/fe/cb/7ef8931c81013548a0392216d3864dc831a6279e4acffd6770c9b756347e/ruff_format-0.5.4-cp314-cp314t-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:169f1672120036d39a0c75eb362ec85d2929d46b1660c03703933e9598cd6463" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/b5/0d/f0a82f307303ec4edbcb2a1953d2d3e8569788dbe8f606d5147f4b35dfbf/ruff_format-0.5.4-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2285a87f29c55fbff83c1fda62d773e026dfb3938defca91fc1a336cf34dcad2" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/49/4d/0c31de7c64caaf5476f66842508679d7e3076bf46c6c5149ef411a1b5a86/ruff_format-0.5.4-cp314-cp314t-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:35016260fcbdc6f730d51b19b81cd5197e56d3f599a4fbf38047bab02f14ab9a" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/d3/9e/84c60f891d4b39a6e6ffee0ed03076f70c6daa5c7ceffcddc9f8a1037842/ruff_format-0.5.4-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:296d8b4fdf9416f846ade8d91c785d4a4f96e9664325567bd44f57ef034faf8d" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/5e/8b/c9326e7c6b63b6d9d68266df760638b04410a692aa9fc7deb5322ec3264a/ruff_format-0.5.4-cp314-cp314t-musllinux_1_2_armv7l.whl", hash = "sha256:89ad80f3c5612b422d8b04d157f3230577b93a5d478de6e5340958fbac0c6268" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/cd/0d/18871063a4b3cf0934e5c394bf3afe141918335e46fbf95417c759eb2feb/ruff_format-0.5.4-cp314-cp314t-musllinux_1_2_i686.whl", hash = "sha256:8ae7a95c679d39b84f8c449ebcd6e7a42ab369554c57697d5347fa3e486fd565" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/d2/0b/d0274d05e9573e25183f0dcc792f7a09100082aceaa25233c735bfc29f7a/ruff_format-0.5.4-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:c426f7f09fae8aae14468fb50331563b9c5ba44bdf5e98bf1b25f422497fcd28" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/0e/e6/0e42a248f0b8bbae4ef37e045e2bce99d2a88ef8a6fc8778482f119fe5ce/ruff_format-0.5.4-cp314-cp314t-win32.whl", hash = "sha256:cd660c7992791424ed55eb323c3ef5be016f393543511bbe9e7ef1914dafbff9" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/45/d2/b548217c2b35577990ccabb436d21ddf74235ac269e66a8255438d9fadab/ruff_format-0.5.4-cp314-cp314t-win_amd64.whl", hash = "sha256:c49973eb4fb373280ef68f970175d9ded782ed0387c0f83e151871c2437286a8" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/e9/d8/4941a0e9c68eff775c5107435a38092e2a071470fe686727489415d783cc/ruff_format-0.5.4-cp314-cp314t-win_arm64.whl", hash = "sha256:a94d29bfe2b4343382290041a69b28f0968c17ac563cddec9551ee532a5ed362" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/95/8a/a519346645a6c67c8f5bbd5b549012674bb4abe294a3e700586061e09118/ruff_format-0.5.4-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:5efee226090856117236666768d66d9aa5619cfdae30aa74f99d1e49163cb7f2" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/d2/69/357e2683a08c7acc89c57bce163d8c6d364b2ab6663ebf64d5fa3f910422/ruff_format-0.5.4-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:c53239903ba44233558493c235148052f396d6450508eb3835685b0e947b8917" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/4f/08/1029bbe3b5e945d86514ccff47515747c9c098ea1c1735abba2ea63829d6/ruff_format-0.5.4-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:61f0a237e560692abf2084f494807c21ea9b84f9d601dc5dd674d5d81adbbb73" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/db/f6/775ae557c7fd05287c717c5d00e958e0f161c0d2a422759fc20f5aa4fe98/ruff_format-0.5.4-cp38-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:95bffcf4af310309b1190f6829f443004e5822b6db87e5ec188b48a3005a8493" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/75/16/699eeed43ec75596aa223465cf81598873c53a6d7bfc992a7cfff9201656/ruff_format-0.5.4-cp38-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:7631f96296a68659bbd4905d3e9e6005145a3fb1ccedf78e8b6ec2d35910e32a" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/e7/44/bf2188d0675e7828631ceff3fefb3df2e1fd31a367ec23043aba82a89e7c/ruff_format-0.5.4-cp38-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:7fff566acaab43a3953909b4c36d8a66d270a7a1e709ef661e4e695762012f75" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/d0/8c/165d21cc589e39efbdbd84429eccc9e727db2aeef5f69a3468c3ec4e8407/ruff_format-0.5.4-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:434e6facc7be420917370b9d31bbddbab89df9c2f71cafb1d128d1b08954b071" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/5a/98/27f0d4f68425cdd93ef9808421493ab882bea0adcd3997f3db76d21d7c36/ruff_format-0.5.4-cp38-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:cbbd29cbd030abd715557c8e83bff1d03101db0114700a9fec169c93f36abd40" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/eb/1d/eb60ebf7dbc053c39388a6152711943dd6cb4ceb851de3dc53ae2347d296/ruff_format-0.5.4-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:b5175adf6bdf4306075daccae21882f6b8bfb9b019b4eee6ddfc0d96665777fd" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/50/10/416656739b19a162b50909cae9005110c0c44fb446772f6381cdbca9e8df/ruff_format-0.5.4-cp38-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:d1d61cf7197628fd73d84ac48db64a312aefbabc226c8fc720b682703a7fee65" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/fd/6d/880c831cda590ad0329dac0781667bc308388f4bc9a3071b96dacb333429/ruff_format-0.5.4-cp38-abi3-musllinux_1_2_i686.whl", hash = "sha256:f624e17605f0a302e615dca368fd9eee01c908ca73c72fd5ad3bb1e4131238b4" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/80/fc/5943d1f9309cea92144f1d3d6edd5dbe71048483f8859bc2d1fec58a445c/ruff_format-0.5.4-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:d52fa081372a9da96c31e14f2984e344959b75ca1ce22a4e09c4736337d77dc3" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/e6/ed/419a4094a7328b1b9b9862ed00a993d2c78f1ea73b13910e4779f5c3c069/ruff_format-0.5.4-cp38-abi3-win32.whl", hash = "sha256:84b4508ca1956103f236f492a23c26e160b3c721544a39837d98ee45801d703b" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/8e/6c/aea5b47e40591309e1502c67b31f6a3a45b2a6a053b96fdc883d6c7c0d96/ruff_format-0.5.4-cp38-abi3-win_amd64.whl", hash = "sha256:cd48e46823976b67fe0d3ffc278a01a0c7123ca876e563f0839f47ed77f27d0e" },
+    { url = "https://mirror.yandex.ru/pypi/web/packages/d6/92/477780b98169e0dc3d37fac015f3f9ef3ced1dfcd2ec3a44686c8e07f8d8/ruff_format-0.5.4-cp38-abi3-win_arm64.whl", hash = "sha256:b0dfb4ef7c7f0da7b17c018dc48103907375f06c7b9e3dac3bc396722a725a65" },
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.54"
 source = { registry = "https://mirror.yandex.ru/pypi/web/simple/" }
@@ -205,6 +243,7 @@ dependencies = [
     { name = "alembic" },
     { name = "pytest" },
     { name = "pytest-randomly" },
+    { name = "ruff-format" },
     { name = "sqlalchemy" },
     { name = "sqlparse" },
 ]
@@ -214,6 +253,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.20.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-randomly", specifier = ">=5.0.0" },
+    { name = "ruff-format", specifier = ">=0.5.4" },
     { name = "sqlalchemy", specifier = ">=2.0.52" },
     { name = "sqlparse", specifier = ">=0.6.0" },
 ]
