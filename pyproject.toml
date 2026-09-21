@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.20.0",
+    "pandas>=3.0.6",
     "pytest>=9.1.1",
     "pytest-randomly>=5.0.0",
     "ruff-format>=0.5.4",

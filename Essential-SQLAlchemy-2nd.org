@@ -3853,7 +3853,7 @@ Table(
 * Chapter 7: Working with Data via SQLAlchemy ORM
 ** SQLAlchemy v1
 :PROPERTIES:
-:header-args:python: :session *ch7-v1* :tangle ch7-v1.py :cache no
+:header-args:python: :session *ch7-v1* :tangle ch7-v1.py :cache yes
 :END:
 
 #+BEGIN_SRC python :shebang "#!/usr/bin/env python3" :results none
@@ -3991,5 +3991,298 @@ Table(
 )
 ]
 #+end_example
+**** Controlling the Columns in the Query
+#+BEGIN_SRC python :results table
+  session.query(Cookie.cookie_name, Cookie.quantity).first()
+#+END_SRC
+
+#+RESULTS:
+| chocolate chip | 12 |
+**** Ordering
+#+BEGIN_SRC python :results table
+  results = [('quantity', 'cookie_name')]
+
+  for cookie in session.query(Cookie).order_by(Cookie.quantity):
+      results.append((cookie.quantity, cookie.cookie_name))
+  results
+#+END_SRC
+
+#+RESULTS[f815708c1194af5a00412df8cece6ec9db3af9ad]:
+| quantity | cookie_name         |
+|        1 | dark chocolate chip |
+|        1 | molasses            |
+|       12 | chocolate chip      |
+|       24 | peanut butter       |
+|      100 | oatmeal raisin      |
+
+#+BEGIN_SRC python :results value table
+  import pandas as pd
+  from sqlalchemy import desc
+  results = {'quantity': [], 'cookie_name': []}
+
+  for cookie in session.query(Cookie).order_by(desc(Cookie.quantity)):
+      results['quantity'].append(cookie.quantity)
+      results['cookie_name'].append(cookie.cookie_name)
+  df = pd.DataFrame(results)
+  # Преобразуем DataFrame в список списков для Org Babel
+  # 1. Заголовки: берем названия колонок и добавляем пустую ячейку для индекса
+  headers = [''] + df.columns.tolist()
+
+  # 2. Данные: объединяем индекс и значения строк
+  rows = [[idx] + row.tolist() for idx, row in df.iterrows()]
+
+  # 3. Собираем всё вместе: заголовки + разделитель (None) + строки
+  summary = [headers] + [None] + rows
+  summary
+#+END_SRC
+
+#+RESULTS[be902b1b955e9eadcdc6ba6670ac21a903f3f662]:
+|   | quantity | cookie_name         |
+|---+----------+---------------------|
+| 0 |      100 | oatmeal raisin      |
+| 1 |       24 | peanut butter       |
+| 2 |       12 | chocolate chip      |
+| 3 |        1 | dark chocolate chip |
+| 4 |        1 | molasses            |
+
+**** Limiting
+#+BEGIN_SRC python :results table
+  query = session.query(Cookie).order_by(Cookie.quantity)[:2]
+  # query = session.query(Cookie).order_by(Cookie.quantity).limit(2)
+  [(result.cookie_name,) for result in query]
+#+END_SRC
+
+#+RESULTS[8c45f7d97da1645225462855a200559d1feaec44]:
+| dark chocolate chip |
+| molasses            |
+
+**** Functions and Labels
+#+BEGIN_SRC python :results value
+  from sqlalchemy import func
+
+  inv_count = session.query(func.sum(Cookie.quantity)).scalar()
+  inv_count
+#+END_SRC
+
+#+RESULTS[f1b621d0ce17b8f55883a46a7777bbeb162e412c]:
+: 138
+
+#+BEGIN_SRC python :results raw
+  rec_count = session.query(func.count(Cookie.cookie_name)).first()
+  rec_count
+#+END_SRC
+
+#+RESULTS[10949d37140b7bcb96a26788a765d195b86950c7]:
+(5,)
+
+#+BEGIN_SRC python :results table
+  rec_count = session.query(
+      func.count(Cookie.cookie_name).label("inventory_count")
+  ).first()
+  (list(rec_count._mapping.keys()), (rec_count.inventory_count, ))
+#+END_SRC
+
+#+RESULTS[bc76d2b5448873014373602ade270610b301b86a]:
+| inventory_count |
+|               5 |
+
+**** Filtering
+#+BEGIN_SRC python :results value
+  record = session.query(Cookie).filter(Cookie.cookie_name == "chocolate chip").first()
+  record
+#+END_SRC
+
+#+RESULTS[00fbaff9a1d4dcb32caf86614258e147478b1a39]:
+: Cookie(
+:     cookie_id="1",
+:     cookie_name="chocolate chip",
+:     cookie_recipe_url="http://some.aweso.me/cookie/recipe.html",
+:     cookie_sku="CC01",
+:     quantity="12",
+:     unit_cost="0.50",
+: )
+#+BEGIN_SRC python :results value
+  record = session.query(Cookie).filter_by(cookie_name="chocolate chip").first()
+  record
+#+END_SRC
+
+#+RESULTS[c00b3f6260c658d7a3e6fe76c8cb1fa00d9dd58a]:
+: Cookie(
+:     cookie_id="1",
+:     cookie_name="chocolate chip",
+:     cookie_recipe_url="http://some.aweso.me/cookie/recipe.html",
+:     cookie_sku="CC01",
+:     quantity="12",
+:     unit_cost="0.50",
+: )
+
+#+BEGIN_SRC python :results table
+  query = session.query(Cookie).filter(Cookie.cookie_name.like("chocolate chip"))
+  [record.cookie_name for record in query]
+#+END_SRC
+
+#+RESULTS[498d5d0b02d3bea28799083caf1de588eccebac1]:
+| chocolate chip |
+
+**** Operators
+#+BEGIN_SRC python :results table
+  results = session.query(Cookie.cookie_name, "SKU-" + Cookie.cookie_sku).all()
+  [row for row in results]
+#+END_SRC
+
+#+RESULTS[18ddc67a0b92126197fac22eea073f2e86cf5388]:
+| chocolate chip      | SKU-CC01  |
+| dark chocolate chip | SKU-CC02  |
+| molasses            | SKU-MOL01 |
+| peanut butter       | SKU-PB01  |
+| oatmeal raisin      | SKU-EWW01 |
+
+#+BEGIN_SRC python :results table
+  from sqlalchemy import cast
+
+  query = session.query(
+      Cookie.cookie_name,
+      cast((Cookie.quantity * Cookie.unit_cost), Numeric(12, 2)).label("inv_cost"),
+  )
+  [(result.cookie_name, repr(result.inv_cost)) for result in query]
+#+END_SRC
+
+#+RESULTS[2ce8116fbd2ec77937a191730c2536005f9ac130]:
+| chocolate chip      | Decimal('6.00')   |
+| dark chocolate chip | Decimal('0.75')   |
+| molasses            | Decimal('0.80')   |
+| peanut butter       | Decimal('6.00')   |
+| oatmeal raisin      | Decimal('100.00') |
+
+**** Conjunctions
+#+BEGIN_SRC python :table
+  query = session.query(Cookie).filter(Cookie.quantity > 23, Cookie.unit_cost < 0.40)
+  [(result.cookie_name,) for result in query]
+#+END_SRC
+
+#+RESULTS[419334c901cd5a42e1b7bf59d3ba8a8b421cca81]:
+| peanut butter |
+
+#+BEGIN_SRC python :table
+  from sqlalchemy import and_, or_, not_
+
+  query = session.query(Cookie).filter(
+      or_(Cookie.quantity.between(10, 50), Cookie.cookie_name.contains("chip"))
+  )
+
+  [(result.cookie_name,) for result in query]
+#+END_SRC
+
+#+RESULTS[f1cb32abbfcf01a6b29078b44c8cddf396180df9]:
+| chocolate chip      |
+| dark chocolate chip |
+| peanut butter       |
+
+*** Updating Data
+#+BEGIN_SRC python :results value
+  query = session.query(Cookie)
+  cc_cookie = query.filter(Cookie.cookie_name == "chocolate chip").first()
+  cc_cookie.quantity = cc_cookie.quantity + 120
+  session.commit()
+  cc_cookie.quantity
+#+END_SRC
+
+#+RESULTS[457d95f641df08c05b2a22152eb07da84eb2d44e]:
+: 132
+
+#+BEGIN_SRC python :results value
+  query = session.query(Cookie)
+  query = query.filter(Cookie.cookie_name == "chocolate chip")
+  query.update({Cookie.quantity: Cookie.quantity - 20})
+  cc_cookie = query.first()
+  cc_cookie.quantity
+#+END_SRC
+
+#+RESULTS[746058c87e4012a5ce9ced0b2378ce48f9991d8c]:
+: 112
+
+*** Deleting Data
+#+BEGIN_SRC python :results value
+  query = session.query(Cookie)
+  query = query.filter(Cookie.cookie_name == "dark chocolate chip")
+  # Гарантируем, что такая запись только одна,
+  # и только она одна будет удалена
+  dcc_cookie = query.one()
+  session.delete(dcc_cookie)
+  session.commit()
+  dcc_cookie = query.first()
+  # Здесь должен быть None
+  assert dcc_cookie is None
+#+END_SRC
+
+#+RESULTS[61c6636ec27b672253b640a4609f3a229eec09c6]:
+: None
+
+#+BEGIN_SRC python :results value
+  query = session.query(Cookie)
+  query = query.filter(Cookie.cookie_name == "molasses")
+  query.delete()
+  # Убедимся, что больше такой записи нет
+  mol_cookie = query.first()
+  # Вернёт None
+  assert mol_cookie is None
+#+END_SRC
+
+#+RESULTS[c28ab2893e1da785db9221a9f016ecaea39a7e91]:
+: None
+
+*** Relations
+#+BEGIN_SRC python :results none
+  cookiemon = User(
+      username="cookiemon",
+      email_address="mon@cookie.com",
+      phone="111-111-1111",
+      password="password",
+  )
+  cakeeater = User(
+      username="cakeeater",
+      email_address="cakeeater@cake.com",
+      phone="222-222-2222",
+      password="password",
+  )
+  pieperson = User(
+      username="pieperson",
+      email_address="person@pie.com",
+      phone="333-333-3333",
+      password="password",
+  )
+  session.add(cookiemon)
+  session.add(cakeeater)
+  session.add(pieperson)
+  session.commit()
+#+END_SRC
 
 
+
+#+BEGIN_SRC python :results none
+  o1 = Order()
+  o1.user = cookiemon
+  session.add(o1)
+  cc = session.query(Cookie).filter(Cookie.cookie_name == "chocolate chip").one()
+  line1 = LineItem(cookie=cc, quantity=2, extended_cost=1.00)
+  pb = session.query(Cookie).filter(Cookie.cookie_name == "peanut butter").one()
+  line2 = LineItem(quantity=12, extended_cost=3.00)
+  line2.cookie = pb
+  line2.order = o1
+  o1.line_items.append(line1)
+  o1.line_items.append(line2)
+  session.commit()
+#+END_SRC
+
+#+BEGIN_SRC python :results none
+  o2 = Order()
+  o2.user = cakeeater
+  cc = session.query(Cookie).filter(Cookie.cookie_name == "chocolate chip").one()
+  line1 = LineItem(cookie=cc, quantity=24, extended_cost=12.00)
+  oat = session.query(Cookie).filter(Cookie.cookie_name == "oatmeal raisin").one()
+  line2 = LineItem(cookie=oat, quantity=6, extended_cost=6.00)
+  o2.line_items.append(line1)
+  o2.line_items.append(line2)
+  session.add(o2)
+  session.commit()
+#+END_SRC
