@@ -5723,7 +5723,7 @@ sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled 
 
   def trans_ship_it(order_id: int) -> None:
       try:
-          with session.nested_begin():
+          with session.begin_nested():
               order = session.get(Order, order_id)
               if order is None:
                   raise ValueError(f"Order {order_id} not found")
@@ -5740,7 +5740,7 @@ sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled 
   print(session.execute(stmt).all())
 #+END_SRC
 
-#+RESULTS[a47407ad9a3195076bce967c19c880f1bb5d3ce9]:
+#+RESULTS[6b80bda7ad50095f9d5b584ed9e5f8e557b0dfd5]:
 #+begin_example
   shipped order ID: 1
   [('chocolate chip', 3), ('dark chocolate chip', 1)]
@@ -5761,10 +5761,10 @@ sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled 
   The above exception was the direct cause of the following exception:
 
   Traceback (most recent call last):
-    File "/tmp/babel-0NE78C/python-VGomxl", line 201, in <module>
+    File "/tmp/babel-0NE78C/python-uG2oyE", line 201, in <module>
       ship_it(2)
       ~~~~~~~^^^
-    File "/tmp/babel-0NE78C/python-VGomxl", line 191, in ship_it
+    File "/tmp/babel-0NE78C/python-uG2oyE", line 191, in ship_it
       session.commit()
       ~~~~~~~~~~~~~~^^
     File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/orm/session.py", line 2035, in commit
@@ -5872,7 +5872,7 @@ sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled 
   (Background on this error at: https://sqlalche.me/e/20/gkpj)
   ERROR:root:нужен rollback
   Traceback (most recent call last):
-    File "/tmp/babel-0NE78C/python-VGomxl", line 206, in <module>
+    File "/tmp/babel-0NE78C/python-uG2oyE", line 206, in <module>
       print(session.execute(stmt).all())
             ~~~~~~~~~~~~~~~^^^^^^
     File "/home/octopus/study/Python/sqlalchemy-study/.venv/lib/python3.14/site-packages/sqlalchemy/orm/session.py", line 2373, in execute
@@ -5902,5 +5902,7 @@ sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled 
   [SQL: UPDATE cookies SET quantity=? WHERE cookies.cookie_id = ?]
   [parameters: (-8, 2)]
   (Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)
+  [('chocolate chip', 3), ('dark chocolate chip', 1)]
+  ERROR:root:CHECK constraint failed: quantity_positive
   [('chocolate chip', 3), ('dark chocolate chip', 1)]
 #+end_example
