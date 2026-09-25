@@ -1,2 +1,4 @@
-((org-mode . ((eval . (setq org-babel-python-command (expand-file-name ".venv/bin/python" (file-name-directory buffer-file-name)))))))
-
+((org-mode . ((eval . (setq org-babel-python-command
+                           (concat (expand-file-name ".venv/bin/python"
+                                                     (file-name-directory buffer-file-name))
+                                   " -m sandbox")))))
