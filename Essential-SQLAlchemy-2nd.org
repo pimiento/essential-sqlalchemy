@@ -5906,3 +5906,100 @@ sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled 
   ERROR:root:CHECK constraint failed: quantity_positive
   [('chocolate chip', 3), ('dark chocolate chip', 1)]
 #+end_example
+
+* Chapter 10: Reflection with SQLAlchemy ORM and Automap
+
+** SQLAlchemy v1
+:PROPERTIES:
+:header-args:python: :session *ch10-v1* :tangle ch10-v1.py :cache yes :noweb yes
+:END:
+#+BEGIN_SRC python :results table :shebang "#!/usr/bin/env python3"
+  from sqlalchemy.ext.automap import automap_base
+
+  Base = automap_base()
+
+  from sqlalchemy import create_engine
+  engine = create_engine("sqlite:///Chinook_Sqlite.sqlite")
+  Base.prepare(engine, reflect=True)
+  [(k,) for k in Base.classes.keys()]
+#+END_SRC
+
+#+RESULTS[32bdca5524458c540535c004a2d593ed04a87d7b]:
+| Playlist    |
+| Track       |
+| Customer    |
+| InvoiceLine |
+| Artist      |
+| Invoice     |
+| MediaType   |
+| Genre       |
+| Employee    |
+| Album       |
+
+#+BEGIN_SRC python :results table
+  from sqlalchemy.orm import Session
+
+  Artist = Base.classes.Artist
+  Album = Base.classes.Album
+
+  session = Session(engine)
+  [(artist.ArtistId, artist.Name) for artist in session.query(Artist).limit(10)]
+#+END_SRC
+
+#+RESULTS[983002791b292f46a0452544998df191dec7c602]:
+|  1 | AC/DC                |
+|  2 | Accept               |
+|  3 | Aerosmith            |
+|  4 | Alanis Morissette    |
+|  5 | Alice In Chains      |
+|  6 | Antônio Carlos Jobim |
+|  7 | Apocalyptica         |
+|  8 | Audioslave           |
+|  9 | BackBeat             |
+| 10 | Billy Cobham         |
+
+*** Reflected Relationships
+#+BEGIN_SRC python :results table
+  artist = session.query(Artist).first()
+  [(artist.Name, album.Title)for album in artist.album_collection]
+#+END_SRC
+
+#+RESULTS[9d2f8b99a53eaa7596304d49c1c8cfe470d9a8c8]:
+| AC/DC | For Those About To Rock We Salute You |
+| AC/DC | Let There Be Rock                     |
+
+** SQLAlchemy v2
+:PROPERTIES:
+:header-args:python: :session *ch10-v2* :tangle ch10-v2.py :cache yes :noweb yes
+:END:
+
+
+#+BEGIN_SRC python :shebang "#!/usr/bin/env python3" :results none
+  from sqlalchemy import create_engine, select
+  from sqlalchemy.ext.automap import automap_base
+  from sqlalchemy.orm import Session
+
+  # 1. Automap база
+  Base = automap_base()
+
+  # 2. Движок и рефлексия (2.0 стиль: autoload_with)
+  engine = create_engine("sqlite:///Chinook_Sqlite.sqlite")
+  Base.prepare(autoload_with=engine)
+
+  # 3. Список имён классов
+  class_names = list(Base.classes.keys())
+
+  # 4. Работа с сессией через контекстный менеджер (рекомендуется)
+  with Session(engine) as session:
+      Artist = Base.classes.Artist
+      Album = Base.classes.Album
+
+      # 5. Выборка с limit — scalars() возвращает ORM-объекты напрямую
+      artists = session.scalars(select(Artist).limit(10)).all()
+      artist_data = [(a.ArtistId, a.Name) for a in artists]
+
+      # 6. Первый артист и его альбомы (ленивая загрузка через relationship)
+      artist = session.scalars(select(Artist)).first()
+      if artist:
+          albums_data = [(artist.Name, album.Title) for album in artist.album_collection]
+#+END_SRC
